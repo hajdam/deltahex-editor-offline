@@ -1,0 +1,696 @@
+/*
+ * Copyright (C) ExBin Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.exbin.framework.deltahex.panel;
+
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.util.ArrayList;
+import java.util.List;
+import javax.swing.ComboBoxEditor;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.JList;
+import javax.swing.JOptionPane;
+import javax.swing.ListCellRenderer;
+import org.exbin.deltahex.ScrollBarVisibility;
+import org.exbin.deltahex.swing.CodeArea;
+import org.exbin.deltahex.swing.ColorsGroup;
+import org.exbin.framework.deltahex.DeltaHexModule;
+import org.exbin.framework.deltahex.dialog.FindHexDialog;
+import org.exbin.framework.gui.utils.LanguageUtils;
+import org.exbin.framework.gui.utils.WindowUtils;
+import org.exbin.utils.binary_data.BinaryData;
+import org.exbin.utils.binary_data.ByteArrayEditableData;
+import org.exbin.utils.binary_data.EditableBinaryData;
+
+/**
+ * Hexadecimal editor search panel.
+ *
+ * @version 0.1.0 2016/07/21
+ * @author ExBin Project (http://exbin.org)
+ */
+public class HexSearchPanel extends javax.swing.JPanel {
+
+    private Thread searchStartThread;
+    private Thread searchThread;
+    private final SearchParameters searchParameters = new SearchParameters();
+    private final HexPanel hexPanel;
+    private int matchesCount;
+    private int matchPosition;
+    private final CodeArea hexadecimalRenderer = new CodeArea();
+    private ComboBoxEditor comboBoxEditor;
+    private HexSearchComboBoxPanel comboBoxEditorComponent;
+    private final List<SearchCondition> searchHistory = new ArrayList<>();
+
+    private ClosePanelListener closePanelListener = null;
+    private DeltaHexModule.CodeAreaPopupMenuHandler hexCodePopupMenuHandler;
+    private final java.util.ResourceBundle resourceBundle = LanguageUtils.getResourceBundleByClass(HexSearchPanel.class);
+
+    public HexSearchPanel(HexPanel hexPanel, boolean replaceMode) {
+        initComponents();
+        this.hexPanel = hexPanel;
+        if (!replaceMode) {
+            super.remove(replacePanel);
+        }
+
+        init();
+    }
+
+    private void init() {
+        hexadecimalRenderer.setShowHeader(false);
+        hexadecimalRenderer.setShowLineNumbers(false);
+        hexadecimalRenderer.setWrapMode(true);
+        hexadecimalRenderer.setBackgroundMode(CodeArea.BackgroundMode.PLAIN);
+        hexadecimalRenderer.setVerticalScrollBarVisibility(ScrollBarVisibility.NEVER);
+        hexadecimalRenderer.setHorizontalScrollBarVisibility(ScrollBarVisibility.NEVER);
+        hexadecimalRenderer.setData(new ByteArrayEditableData(new byte[]{1, 2, 3}));
+
+        comboBoxEditorComponent = new HexSearchComboBoxPanel();
+
+        final KeyAdapter editorKeyListener = new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+                    SearchCondition condition = searchParameters.getCondition();
+                    if (!condition.isEmpty()) {
+                        clearSearch();
+                    } else {
+                        cancelSearch();
+                        closePanel();
+                    }
+                }
+            }
+        };
+
+        findComboBox.setRenderer(new ListCellRenderer<SearchCondition>() {
+            private final DefaultListCellRenderer listCellRenderer = new DefaultListCellRenderer();
+
+            @Override
+            public Component getListCellRendererComponent(JList<? extends SearchCondition> list, SearchCondition value, int index, boolean isSelected, boolean cellHasFocus) {
+                if (value.getSearchMode() == SearchCondition.SearchMode.TEXT) {
+                    return listCellRenderer.getListCellRendererComponent(list, value.getSearchText(), index, isSelected, cellHasFocus);
+                } else {
+                    hexadecimalRenderer.setData(value.getBinaryData());
+                    hexadecimalRenderer.setPreferredSize(new Dimension(200, 20));
+                    Color backgroundColor;
+                    if (isSelected) {
+                        backgroundColor = list.getSelectionBackground();
+                    } else {
+                        backgroundColor = list.getBackground();
+                    }
+                    ColorsGroup mainColors = hexadecimalRenderer.getMainColors();
+                    mainColors.setBothBackgroundColors(backgroundColor);
+                    hexadecimalRenderer.setMainColors(mainColors);
+                    return hexadecimalRenderer;
+                }
+            }
+        });
+
+        comboBoxEditor = new ComboBoxEditor() {
+
+            @Override
+            public Component getEditorComponent() {
+                return comboBoxEditorComponent;
+            }
+
+            @Override
+            public void setItem(Object item) {
+                SearchCondition condition;
+                if (item == null || item instanceof String) {
+                    condition = new SearchCondition();
+                    condition.setSearchMode(SearchCondition.SearchMode.TEXT);
+                    if (item != null) {
+                        condition.setSearchText((String) item);
+                    }
+                } else {
+                    condition = (SearchCondition) item;
+                }
+                searchParameters.setCondition(new SearchCondition(condition));
+                SearchCondition currentItem = comboBoxEditorComponent.getItem();
+                if (item != currentItem) {
+                    comboBoxEditorComponent.setItem(condition);
+                    updateFindStatus();
+                }
+            }
+
+            @Override
+            public Object getItem() {
+                return comboBoxEditorComponent.getItem();
+            }
+
+            @Override
+            public void selectAll() {
+                comboBoxEditorComponent.selectAll();
+            }
+
+            @Override
+            public void addActionListener(ActionListener l) {
+            }
+
+            @Override
+            public void removeActionListener(ActionListener l) {
+            }
+        };
+        findComboBox.setEditor(comboBoxEditor);
+
+        comboBoxEditorComponent.setValueChangedListener(new HexSearchComboBoxPanel.ValueChangedListener() {
+            @Override
+            public void valueChanged() {
+                comboBoxValueChanged();
+            }
+        });
+        comboBoxEditorComponent.addValueKeyListener(editorKeyListener);
+        findComboBox.setModel(new SearchHistoryModel(searchHistory));
+    }
+
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
+
+        topSeparator = new javax.swing.JSeparator();
+        findPanel = new javax.swing.JPanel();
+        findLabel = new javax.swing.JLabel();
+        searchTypeToolBar = new javax.swing.JToolBar();
+        searchTypeButton = new javax.swing.JButton();
+        findComboBox = new javax.swing.JComboBox<>();
+        findToolBar = new javax.swing.JToolBar();
+        prevButton = new javax.swing.JButton();
+        nextButton = new javax.swing.JButton();
+        matchCaseToggleButton = new javax.swing.JToggleButton();
+        multipleMatchesToggleButton = new javax.swing.JToggleButton();
+        separator1 = new javax.swing.JToolBar.Separator();
+        optionsButton = new javax.swing.JButton();
+        infoLabel = new javax.swing.JLabel();
+        closeToolBar = new javax.swing.JToolBar();
+        closeButton = new javax.swing.JButton();
+        replacePanel = new javax.swing.JPanel();
+        replaceLabel = new javax.swing.JLabel();
+        replaceComboBox = new javax.swing.JComboBox<>();
+
+        setName("Form"); // NOI18N
+        setLayout(new java.awt.BorderLayout());
+
+        topSeparator.setName("topSeparator"); // NOI18N
+        add(topSeparator, java.awt.BorderLayout.NORTH);
+
+        findPanel.setName("findPanel"); // NOI18N
+
+        findLabel.setText(resourceBundle.getString("HexSearchPanel.findLabel.text")); // NOI18N
+        findLabel.setName("findLabel"); // NOI18N
+
+        searchTypeToolBar.setBorder(null);
+        searchTypeToolBar.setFloatable(false);
+        searchTypeToolBar.setRollover(true);
+        searchTypeToolBar.setFocusable(false);
+        searchTypeToolBar.setName("searchTypeToolBar"); // NOI18N
+
+        searchTypeButton.setText("T");
+        searchTypeButton.setToolTipText(resourceBundle.getString("HexSearchPanel.searchTypeButton.toolTipText")); // NOI18N
+        searchTypeButton.setFocusable(false);
+        searchTypeButton.setMaximumSize(new java.awt.Dimension(27, 27));
+        searchTypeButton.setMinimumSize(new java.awt.Dimension(27, 27));
+        searchTypeButton.setName("searchTypeButton"); // NOI18N
+        searchTypeButton.setPreferredSize(new java.awt.Dimension(27, 27));
+        searchTypeButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                searchTypeButtonActionPerformed(evt);
+            }
+        });
+        searchTypeToolBar.add(searchTypeButton);
+
+        findComboBox.setEditable(true);
+        findComboBox.setSelectedItem("");
+        findComboBox.setName("findComboBox"); // NOI18N
+
+        findToolBar.setBorder(null);
+        findToolBar.setFloatable(false);
+        findToolBar.setRollover(true);
+        findToolBar.setFocusable(false);
+        findToolBar.setName("findToolBar"); // NOI18N
+
+        prevButton.setIcon(new javax.swing.ImageIcon(getClass().getResource("/org/exbin/framework/deltahex/resources/icons/open_icon_library/icons/png/16x16/actions/arrow-left.png"))); // NOI18N
+        prevButton.setEnabled(false);
+        prevButton.setFocusable(false);
+        prevButton.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        prevButton.setName("prevButton"); // NOI18N
+        prevButton.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        prevButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                prevButtonActionPerformed(evt);
+            }
+        });
+        findToolBar.add(prevButton);
+
+        nextButton.setIcon(new javax.swing.ImageIcon(getClass().getResource("/org/exbin/framework/deltahex/resources/icons/open_icon_library/icons/png/16x16/actions/arrow-right.png"))); // NOI18N
+        nextButton.setEnabled(false);
+        nextButton.setFocusable(false);
+        nextButton.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        nextButton.setName("nextButton"); // NOI18N
+        nextButton.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        nextButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                nextButtonActionPerformed(evt);
+            }
+        });
+        findToolBar.add(nextButton);
+
+        matchCaseToggleButton.setIcon(new javax.swing.ImageIcon(getClass().getResource("/org/exbin/framework/deltahex/resources/icons/case_sensitive.gif"))); // NOI18N
+        matchCaseToggleButton.setSelected(true);
+        matchCaseToggleButton.setFocusable(false);
+        matchCaseToggleButton.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        matchCaseToggleButton.setName("matchCaseToggleButton"); // NOI18N
+        matchCaseToggleButton.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        matchCaseToggleButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                matchCaseToggleButtonActionPerformed(evt);
+            }
+        });
+        findToolBar.add(matchCaseToggleButton);
+
+        multipleMatchesToggleButton.setIcon(new javax.swing.ImageIcon(getClass().getResource("/org/exbin/framework/deltahex/resources/icons/mark_occurrences.png"))); // NOI18N
+        multipleMatchesToggleButton.setSelected(true);
+        multipleMatchesToggleButton.setFocusable(false);
+        multipleMatchesToggleButton.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        multipleMatchesToggleButton.setName("multipleMatchesToggleButton"); // NOI18N
+        multipleMatchesToggleButton.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        multipleMatchesToggleButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                multipleMatchesToggleButtonActionPerformed(evt);
+            }
+        });
+        findToolBar.add(multipleMatchesToggleButton);
+
+        separator1.setName("separator1"); // NOI18N
+        findToolBar.add(separator1);
+
+        optionsButton.setText(resourceBundle.getString("HexSearchPanel.optionsButton.text")); // NOI18N
+        optionsButton.setFocusable(false);
+        optionsButton.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        optionsButton.setName("optionsButton"); // NOI18N
+        optionsButton.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        optionsButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                optionsButtonActionPerformed(evt);
+            }
+        });
+        findToolBar.add(optionsButton);
+
+        infoLabel.setEnabled(false);
+        infoLabel.setName("infoLabel"); // NOI18N
+
+        closeToolBar.setBorder(null);
+        closeToolBar.setFloatable(false);
+        closeToolBar.setRollover(true);
+        closeToolBar.setName("closeToolBar"); // NOI18N
+
+        closeButton.setIcon(new javax.swing.ImageIcon(getClass().getResource("/org/exbin/framework/deltahex/resources/icons/open_icon_library/icons/png/16x16/actions/dialog-cancel-3.png"))); // NOI18N
+        closeButton.setFocusable(false);
+        closeButton.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        closeButton.setName("closeButton"); // NOI18N
+        closeButton.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        closeButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                closeButtonActionPerformed(evt);
+            }
+        });
+        closeToolBar.add(closeButton);
+
+        javax.swing.GroupLayout findPanelLayout = new javax.swing.GroupLayout(findPanel);
+        findPanel.setLayout(findPanelLayout);
+        findPanelLayout.setHorizontalGroup(
+            findPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, findPanelLayout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(findLabel)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(searchTypeToolBar, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(findComboBox, 0, 519, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(findToolBar, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(infoLabel, javax.swing.GroupLayout.PREFERRED_SIZE, 165, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(closeToolBar, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+        );
+        findPanelLayout.setVerticalGroup(
+            findPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(closeToolBar, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .addComponent(infoLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .addComponent(findToolBar, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .addComponent(searchTypeToolBar, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .addComponent(findLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .addComponent(findComboBox)
+        );
+
+        add(findPanel, java.awt.BorderLayout.CENTER);
+
+        replacePanel.setName("replacePanel"); // NOI18N
+
+        replaceLabel.setText(resourceBundle.getString("HexSearchPanel.replaceLabel.text")); // NOI18N
+        replaceLabel.setName("replaceLabel"); // NOI18N
+
+        replaceComboBox.setEditable(true);
+        replaceComboBox.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        replaceComboBox.setSelectedItem("");
+        replaceComboBox.setMinimumSize(new java.awt.Dimension(137, 25));
+        replaceComboBox.setName("replaceComboBox"); // NOI18N
+
+        javax.swing.GroupLayout replacePanelLayout = new javax.swing.GroupLayout(replacePanel);
+        replacePanel.setLayout(replacePanelLayout);
+        replacePanelLayout.setHorizontalGroup(
+            replacePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(replacePanelLayout.createSequentialGroup()
+                .addGap(70, 70, 70)
+                .addComponent(replaceComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, 345, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(600, Short.MAX_VALUE))
+            .addGroup(replacePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addGroup(replacePanelLayout.createSequentialGroup()
+                    .addContainerGap()
+                    .addComponent(replaceLabel)
+                    .addContainerGap(948, Short.MAX_VALUE)))
+        );
+        replacePanelLayout.setVerticalGroup(
+            replacePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(replaceComboBox, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+            .addGroup(replacePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addComponent(replaceLabel, javax.swing.GroupLayout.DEFAULT_SIZE, 25, Short.MAX_VALUE))
+        );
+
+        add(replacePanel, java.awt.BorderLayout.SOUTH);
+    }// </editor-fold>//GEN-END:initComponents
+
+    private void optionsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_optionsButtonActionPerformed
+        cancelSearch();
+        FindHexDialog findDialog = new FindHexDialog(WindowUtils.getFrame(this), true);
+        findDialog.setShallReplace(false);
+        findDialog.setSelected();
+        findDialog.setLocationRelativeTo(findDialog.getParent());
+        findDialog.setSearchHistory(searchHistory);
+        findDialog.setSearchParameters(searchParameters);
+        findDialog.setHexCodePopupMenuHandler(hexCodePopupMenuHandler);
+        findDialog.setVisible(true);
+        if (findDialog.getDialogOption() == JOptionPane.OK_OPTION) {
+            SearchParameters findParameters = findDialog.getSearchParameters();
+            ((SearchHistoryModel) findComboBox.getModel()).addSearchCondition(findParameters.getCondition());
+            searchParameters.setFromParameters(findParameters);
+            comboBoxEditorComponent.setItem(findParameters.getCondition());
+            updateFindStatus();
+            hexPanel.findText(findParameters);
+        }
+        findDialog.detachMenu();
+    }//GEN-LAST:event_optionsButtonActionPerformed
+
+    private void prevButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_prevButtonActionPerformed
+        matchPosition--;
+        hexPanel.setMatchPosition(matchPosition);
+        setStatus(matchesCount, matchPosition);
+    }//GEN-LAST:event_prevButtonActionPerformed
+
+    private void nextButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_nextButtonActionPerformed
+        matchPosition++;
+        hexPanel.setMatchPosition(matchPosition);
+        setStatus(matchesCount, matchPosition);
+    }//GEN-LAST:event_nextButtonActionPerformed
+
+    private void multipleMatchesToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_multipleMatchesToggleButtonActionPerformed
+        searchParameters.setMultipleMatches(multipleMatchesToggleButton.isSelected());
+        performSearch();
+    }//GEN-LAST:event_multipleMatchesToggleButtonActionPerformed
+
+    private void matchCaseToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_matchCaseToggleButtonActionPerformed
+        searchParameters.setMatchCase(matchCaseToggleButton.isSelected());
+        performSearch();
+    }//GEN-LAST:event_matchCaseToggleButtonActionPerformed
+
+    private void searchTypeButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_searchTypeButtonActionPerformed
+        SearchCondition condition = searchParameters.getCondition();
+        if (condition.getSearchMode() == SearchCondition.SearchMode.TEXT) {
+            condition.setSearchMode(SearchCondition.SearchMode.BINARY);
+        } else {
+            condition.setSearchMode(SearchCondition.SearchMode.TEXT);
+        }
+
+        comboBoxEditor.setItem(condition);
+        findComboBox.setEditor(comboBoxEditor);
+        findComboBox.repaint();
+        performSearch();
+    }//GEN-LAST:event_searchTypeButtonActionPerformed
+
+    private void updateFindStatus() {
+        SearchCondition condition = searchParameters.getCondition();
+        if (condition.getSearchMode() == SearchCondition.SearchMode.TEXT) {
+            searchTypeButton.setText("T");
+            matchCaseToggleButton.setEnabled(true);
+        } else {
+            searchTypeButton.setText("B");
+            matchCaseToggleButton.setEnabled(false);
+        }
+    }
+
+    private void closeButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_closeButtonActionPerformed
+        closePanel();
+    }//GEN-LAST:event_closeButtonActionPerformed
+
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton closeButton;
+    private javax.swing.JToolBar closeToolBar;
+    private javax.swing.JComboBox<SearchCondition> findComboBox;
+    private javax.swing.JLabel findLabel;
+    private javax.swing.JPanel findPanel;
+    private javax.swing.JToolBar findToolBar;
+    private javax.swing.JLabel infoLabel;
+    private javax.swing.JToggleButton matchCaseToggleButton;
+    private javax.swing.JToggleButton multipleMatchesToggleButton;
+    private javax.swing.JButton nextButton;
+    private javax.swing.JButton optionsButton;
+    private javax.swing.JButton prevButton;
+    private javax.swing.JComboBox<String> replaceComboBox;
+    private javax.swing.JLabel replaceLabel;
+    private javax.swing.JPanel replacePanel;
+    private javax.swing.JButton searchTypeButton;
+    private javax.swing.JToolBar searchTypeToolBar;
+    private javax.swing.JToolBar.Separator separator1;
+    private javax.swing.JSeparator topSeparator;
+    // End of variables declaration//GEN-END:variables
+
+    private void comboBoxValueChanged() {
+        SearchCondition condition = searchParameters.getCondition();
+        SearchCondition searchCondition = (SearchCondition) findComboBox.getEditor().getItem();
+
+        switch (searchCondition.getSearchMode()) {
+            case TEXT: {
+                String searchText = searchCondition.getSearchText();
+                if (searchText == null || searchText.isEmpty()) {
+                    condition.setSearchText(searchText);
+                    performFind();
+                    return;
+                }
+
+                if (searchText.equals(condition.getSearchText())) {
+                    return;
+                }
+
+                condition.setSearchText(searchText);
+                break;
+            }
+            case BINARY: {
+                EditableBinaryData searchData = (EditableBinaryData) searchCondition.getBinaryData();
+                if (searchData == null || searchData.isEmpty()) {
+                    condition.setBinaryData(null);
+                    performFind();
+                    return;
+                }
+
+                if (dataEquals(searchData, condition.getBinaryData())) {
+                    return;
+                }
+
+                ByteArrayEditableData data = new ByteArrayEditableData();
+                data.insert(0, searchData);
+                condition.setBinaryData(data);
+                break;
+            }
+        }
+        hexPanel.updatePosition();
+        performSearch(500);
+    }
+
+    private void performSearch() {
+        performSearch(0);
+    }
+
+    private void performSearch(final int delay) {
+        if (searchStartThread != null) {
+            searchStartThread.interrupt();
+        }
+        searchStartThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Thread.sleep(delay);
+                    if (searchThread != null) {
+                        searchThread.interrupt();
+                    }
+                    searchThread = new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            performFind();
+                        }
+                    });
+                    searchThread.start();
+                } catch (InterruptedException ex) {
+                    // don't search
+                }
+            }
+        });
+        searchStartThread.start();
+    }
+
+    public void clearSearch() {
+        SearchCondition condition = searchParameters.getCondition();
+        if (!condition.isEmpty()) {
+            condition.clear();
+            findComboBox.getEditor().setItem(new SearchCondition());
+            performSearch();
+        }
+    }
+
+    public void requestSearchFocus() {
+        findComboBox.requestFocus();
+        comboBoxEditorComponent.requestFocus();
+    }
+
+    public void cancelSearch() {
+        if (searchThread != null) {
+            searchThread.interrupt();
+        }
+    }
+
+    public void performFind() {
+        hexPanel.findText(searchParameters);
+        comboBoxEditorComponent.setRunningUpdate(true);
+        ((SearchHistoryModel) findComboBox.getModel()).addSearchCondition(searchParameters.getCondition());
+        comboBoxEditorComponent.setRunningUpdate(false);
+    }
+
+    public void updatePosition(long position, long dataSize) {
+        long startPosition;
+        if (searchParameters.isSearchFromCursor()) {
+            startPosition = position;
+        } else {
+            switch (searchParameters.getSearchDirection()) {
+                case FORWARD: {
+                    startPosition = 0;
+                    break;
+                }
+                case BACKWARD: {
+                    startPosition = dataSize - 1;
+                    break;
+                }
+                default:
+                    throw new IllegalStateException("Illegal search type " + searchParameters.getSearchDirection().name());
+            }
+        }
+        searchParameters.setStartPosition(startPosition);
+    }
+
+    public void setStatus(int matchesCount, int matchPosition) {
+        this.matchesCount = matchesCount;
+        this.matchPosition = matchPosition;
+        switch (matchesCount) {
+            case 0:
+                infoLabel.setText("No matches found");
+                break;
+            case 1:
+                infoLabel.setText("Single match found");
+                break;
+            default:
+                infoLabel.setText("Match " + (matchPosition + 1) + " of " + matchesCount);
+                updateTraverseButtons();
+                break;
+        }
+        updateTraverseButtons();
+    }
+
+    public void clearStatus() {
+        infoLabel.setText("");
+        matchesCount = 0;
+        matchPosition = -1;
+        updateTraverseButtons();
+    }
+
+    public void dataChanged() {
+        hexPanel.clearMatches();
+        performSearch(500);
+    }
+
+    public void closePanel() {
+        if (closePanelListener != null) {
+            clearSearch();
+            closePanelListener.panelClosed();
+        }
+    }
+
+    public ClosePanelListener getClosePanelListener() {
+        return closePanelListener;
+    }
+
+    public void setClosePanelListener(ClosePanelListener closePanelListener) {
+        this.closePanelListener = closePanelListener;
+    }
+
+    private void updateTraverseButtons() {
+        prevButton.setEnabled(matchesCount > 1 && matchPosition > 0);
+        nextButton.setEnabled(matchPosition < matchesCount - 1);
+    }
+
+    // TODO implement optimalized method
+    private boolean dataEquals(EditableBinaryData binaryData, BinaryData comparedData) {
+        if (binaryData == null || comparedData == null || binaryData.getDataSize() != comparedData.getDataSize()) {
+            return false;
+        }
+
+        for (int position = 0; position < binaryData.getDataSize(); position++) {
+            if (binaryData.getByte(position) != comparedData.getByte(position)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public void setHexCodePopupMenuHandler(DeltaHexModule.CodeAreaPopupMenuHandler hexCodePopupMenuHandler) {
+        this.hexCodePopupMenuHandler = hexCodePopupMenuHandler;
+        comboBoxEditorComponent.setHexCodePopupMenuHandler(hexCodePopupMenuHandler, "");
+    }
+
+    /**
+     * Listener for panel closing.
+     */
+    public static interface ClosePanelListener {
+
+        void panelClosed();
+    }
+}
