@@ -1,7 +1,0 @@
-rootProject.name = 'xbup-catalog'
-
-if (rootProject.path == ':') {
-    include ':modules:xbup-core'
-}
-
-apply from: '../xbup-java-modules-settings.gradle'
