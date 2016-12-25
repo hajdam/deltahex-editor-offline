@@ -39,16 +39,15 @@ import org.exbin.framework.editor.text.dialog.ManageEncodingsDialog;
 import org.exbin.framework.editor.text.panel.TextEncodingOptionsPanel;
 import org.exbin.framework.editor.text.panel.TextEncodingPanel;
 import org.exbin.framework.editor.text.panel.TextEncodingPanelApi;
-import org.exbin.framework.gui.frame.api.GuiFrameModuleApi;
-import org.exbin.framework.gui.menu.api.GuiMenuModuleApi;
-import org.exbin.framework.gui.utils.ActionUtils;
 import org.exbin.framework.gui.editor.api.EditorProvider;
+import org.exbin.framework.gui.frame.api.GuiFrameModuleApi;
+import org.exbin.framework.gui.utils.ActionUtils;
 import org.exbin.framework.gui.utils.LanguageUtils;
 
 /**
  * Encodings handler.
  *
- * @version 0.2.0 2016/07/18
+ * @version 0.2.0 2016/12/20
  * @author ExBin Project (http://exbin.org)
  */
 public class EncodingsHandler implements TextEncodingPanelApi {
@@ -105,7 +104,7 @@ public class EncodingsHandler implements TextEncodingPanelApi {
             @Override
             public void actionPerformed(ActionEvent e) {
                 GuiFrameModuleApi frameModule = application.getModuleRepository().getModuleByInterface(GuiFrameModuleApi.class);
-                ManageEncodingsDialog dlg = new ManageEncodingsDialog(frameModule.getFrame(), EncodingsHandler.this, true);
+                ManageEncodingsDialog dlg = new ManageEncodingsDialog(application, frameModule.getFrame(), EncodingsHandler.this, true);
                 dlg.setIconImage(application.getApplicationIcon());
                 TextEncodingPanel panel = dlg.getEncodingPanel();
                 panel.setEncodingList(new ArrayList<>(encodings));
@@ -119,7 +118,7 @@ public class EncodingsHandler implements TextEncodingPanelApi {
         };
         ActionUtils.setupAction(manageEncodingsAction, resourceBundle, "manageEncodingsAction");
         manageEncodingsAction.putValue(ActionUtils.ACTION_DIALOG_MODE, true);
-        manageEncodingsAction.putValue(Action.NAME, manageEncodingsAction.getValue(Action.NAME) + GuiMenuModuleApi.DIALOG_MENUITEM_EXT);
+        manageEncodingsAction.putValue(Action.NAME, manageEncodingsAction.getValue(Action.NAME) + ActionUtils.DIALOG_MENUITEM_EXT);
 
         toolsEncodingMenu = new JMenu();
         toolsEncodingMenu.add(utfEncodingRadioButtonMenuItem);
@@ -254,9 +253,10 @@ public class EncodingsHandler implements TextEncodingPanelApi {
                     item.setSelected(true);
                 }
             }
-            popupMenu.add(new JSeparator());
-            popupMenu.add(manageEncodingsAction);
         }
+
+        popupMenu.add(new JSeparator());
+        popupMenu.add(manageEncodingsAction);
 
         popupMenu.show((Component) mouseEvent.getSource(), mouseEvent.getX(), mouseEvent.getY());
     }

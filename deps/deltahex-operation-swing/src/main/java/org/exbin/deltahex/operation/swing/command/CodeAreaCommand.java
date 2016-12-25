@@ -15,16 +15,16 @@
  */
 package org.exbin.deltahex.operation.swing.command;
 
+import org.exbin.deltahex.operation.BinaryDataAbstractCommand;
 import org.exbin.deltahex.swing.CodeArea;
-import org.exbin.xbup.operation.AbstractCommand;
 
 /**
  * Abstract class for operation on code area component.
  *
- * @version 0.1.0 2016/06/13
+ * @version 0.1.2 2016/12/20
  * @author ExBin Project (http://exbin.org)
  */
-public abstract class CodeAreaCommand extends AbstractCommand {
+public abstract class CodeAreaCommand extends BinaryDataAbstractCommand {
 
     protected final CodeArea codeArea;
 

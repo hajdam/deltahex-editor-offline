@@ -15,15 +15,17 @@
  */
 package org.exbin.deltahex.operation.swing;
 
+import org.exbin.deltahex.operation.BinaryDataOperation;
+import org.exbin.deltahex.operation.BinaryDataOperationException;
 import org.exbin.deltahex.swing.CodeArea;
 
 /**
  * Abstract class for operation on code area component.
  *
- * @version 0.1.0 2016/06/13
+ * @version 0.1.2 2016/12/20
  * @author ExBin Project (http://exbin.org)
  */
-public abstract class CodeAreaOperation {
+public abstract class CodeAreaOperation implements BinaryDataOperation {
 
     protected final CodeArea codeArea;
 
@@ -54,25 +56,25 @@ public abstract class CodeAreaOperation {
     /**
      * Performs operation on given document.
      *
-     * @throws java.lang.Exception if thrown during execution
+     * @throws BinaryDataOperationException for operation handling issues
      */
-    public abstract void execute() throws Exception;
+    public abstract void execute() throws BinaryDataOperationException;
 
     /**
      * Performs operation on given document and returns undo operation.
      *
      * @return undo operation or null if not available
-     * @throws java.lang.Exception if thrown during execution
+     * @throws BinaryDataOperationException for operation handling issues
      */
-    public abstract CodeAreaOperation executeWithUndo() throws Exception;
+    public abstract CodeAreaOperation executeWithUndo() throws BinaryDataOperationException;
 
     /**
      * Performs dispose of the operation.
      *
      * Default dispose is empty.
      *
-     * @throws Exception if not successful
+     * @throws BinaryDataOperationException for operation handling issues
      */
-    public void dispose() throws Exception {
+    public void dispose() throws BinaryDataOperationException {
     }
 }

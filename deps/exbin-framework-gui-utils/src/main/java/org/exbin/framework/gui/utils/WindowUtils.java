@@ -16,8 +16,10 @@
  */
 package org.exbin.framework.gui.utils;
 
+import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.Dimension;
 import java.awt.Frame;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
@@ -26,6 +28,7 @@ import java.awt.Window;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.WindowEvent;
+import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.ImageIcon;
@@ -33,6 +36,7 @@ import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JEditorPane;
 import javax.swing.JFrame;
+import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.JTextPane;
 import javax.swing.LookAndFeel;
@@ -43,13 +47,17 @@ import org.exbin.framework.gui.utils.panel.WindowHeaderPanel;
 /**
  * Utility static methods usable for windows and dialogs.
  *
- * @version 0.2.0 2016/12/04
+ * @version 0.2.0 2016/12/22
  * @author ExBin Project (http://exbin.org)
  */
 public class WindowUtils {
 
     private static final int BUTTON_CLICK_TIME = 150;
     private static LookAndFeel lookAndFeel = null;
+
+    public static void addHeaderPanel(JDialog dialog, ResourceBundle resourceBundle) {
+        addHeaderPanel(dialog, resourceBundle.getString("header.title"), resourceBundle.getString("header.description"), resourceBundle.getString("header.icon"));
+    }
 
     public static void addHeaderPanel(JDialog dialog, String headerTitle, String headerDescription, String headerIcon) {
         WindowHeaderPanel headerPanel = new WindowHeaderPanel();
@@ -66,7 +74,9 @@ public class WindowUtils {
                 ((WindowHeaderPanel.WindowHeaderDecorationProvider) frame).setHeaderDecoration(headerPanel);
             }
         }
+        int height = dialog.getHeight() + headerPanel.getPreferredSize().height;
         dialog.getContentPane().add(headerPanel, java.awt.BorderLayout.PAGE_START);
+        dialog.setSize(dialog.getWidth(), height);
     }
 
     private WindowUtils() {
@@ -99,6 +109,19 @@ public class WindowUtils {
         });
     }
 
+    public static JDialog createDialog(final Component component) {
+        JDialog dialog = new JDialog();
+        Dimension size = component.getPreferredSize();
+        dialog.add(component);
+        dialog.setSize(size.width + 8, size.height + 24);
+        return dialog;
+    }
+
+    public static void invokeDialog(final Component component) {
+        JDialog dialog = createDialog(component);
+        invokeWindow(dialog);
+    }
+
     public static void initWindow(Window window) {
 //        if (window.getParent() instanceof XBEditorFrame) {
 //            window.setIconImage(((XBEditorFrame) window.getParent()).getMainFrameManagement().getFrameIcon());
@@ -122,10 +145,6 @@ public class WindowUtils {
         dialog.setSize(640, 480);
         dialog.setLocationByPlatform(true);
         return dialog;
-    }
-
-    public static TestApplication getDefaultAppEditor() {
-        return new TestApplication();
     }
 
     /**
@@ -160,6 +179,26 @@ public class WindowUtils {
      * @param cancelButton button which will be used for closing operation
      */
     public static void assignGlobalKeyListener(Container component, final JButton okButton, final JButton cancelButton) {
+        assignGlobalKeyListener(component, new OkCancelListener() {
+            @Override
+            public void okEvent() {
+                doButtonClick(okButton);
+            }
+
+            @Override
+            public void cancelEvent() {
+                doButtonClick(cancelButton);
+            }
+        });
+    }
+
+    /**
+     * Assign ESCAPE/ENTER key for all focusable components recursively.
+     *
+     * @param component target component
+     * @param listener ok and cancel event listener
+     */
+    public static void assignGlobalKeyListener(Container component, final OkCancelListener listener) {
         KeyListener keyListener = new KeyListener() {
             @Override
             public void keyTyped(KeyEvent e) {
@@ -181,12 +220,12 @@ public class WindowUtils {
                         performOkAction = !((JEditorPane) evt.getSource()).isEditable();
                     }
 
-                    if (okButton != null && performOkAction) {
-                        okButton.doClick(BUTTON_CLICK_TIME);
+                    if (performOkAction && listener != null) {
+                        listener.okEvent();
                     }
 
-                } else if (evt.getKeyCode() == KeyEvent.VK_ESCAPE) {
-                    cancelButton.doClick(BUTTON_CLICK_TIME);
+                } else if (evt.getKeyCode() == KeyEvent.VK_ESCAPE && listener != null) {
+                    listener.cancelEvent();
                 }
             }
 
@@ -291,5 +330,26 @@ public class WindowUtils {
         } else {
             window.setBounds((int) absoluteX, (int) absoluteY, (int) widthX, (int) widthY);
         }
+    }
+
+    /**
+     * Creates panel for given main and control panel.
+     *
+     * @param mainPanel main panel
+     * @param controlPanel control panel
+     * @return panel
+     */
+    public static JPanel createDialogPanel(JPanel mainPanel, JPanel controlPanel) {
+        JPanel dialogPanel = new JPanel(new BorderLayout());
+        dialogPanel.add(mainPanel, BorderLayout.CENTER);
+        dialogPanel.add(controlPanel, BorderLayout.SOUTH);
+        return dialogPanel;
+    }
+
+    public static interface OkCancelListener {
+
+        void okEvent();
+
+        void cancelEvent();
     }
 }

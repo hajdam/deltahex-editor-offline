@@ -52,6 +52,7 @@ import javax.swing.JPopupMenu;
 import org.exbin.deltahex.CaretMovedListener;
 import org.exbin.deltahex.CaretPosition;
 import org.exbin.deltahex.DataChangedListener;
+import org.exbin.deltahex.EditationAllowed;
 import org.exbin.deltahex.EditationMode;
 import org.exbin.deltahex.EditationModeChangedListener;
 import org.exbin.deltahex.Section;
@@ -60,30 +61,30 @@ import org.exbin.deltahex.SelectionRange;
 import org.exbin.deltahex.delta.DeltaDocument;
 import org.exbin.deltahex.delta.FileDataSource;
 import org.exbin.deltahex.delta.SegmentsRepository;
-import org.exbin.deltahex.swing.CodeArea;
 import org.exbin.deltahex.highlight.swing.HighlightCodeAreaPainter;
+import org.exbin.deltahex.operation.BinaryDataCommand;
 import org.exbin.deltahex.operation.swing.CodeAreaUndoHandler;
 import org.exbin.deltahex.operation.swing.CodeCommandHandler;
+import org.exbin.deltahex.operation.undo.BinaryDataUndoUpdateListener;
+import org.exbin.deltahex.swing.CodeArea;
 import org.exbin.framework.deltahex.DeltaHexModule;
 import org.exbin.framework.deltahex.HexEditorProvider;
 import org.exbin.framework.deltahex.HexStatusApi;
+import org.exbin.framework.editor.text.TextCharsetApi;
+import org.exbin.framework.editor.text.TextEncodingStatusApi;
 import org.exbin.framework.editor.text.dialog.TextFontDialog;
 import org.exbin.framework.editor.text.panel.TextEncodingPanel;
 import org.exbin.framework.gui.file.api.FileType;
-import org.exbin.framework.gui.menu.api.ClipboardActionsUpdateListener;
 import org.exbin.framework.gui.menu.api.ClipboardActionsHandler;
-import org.exbin.framework.editor.text.TextCharsetApi;
-import org.exbin.framework.editor.text.TextEncodingStatusApi;
+import org.exbin.framework.gui.menu.api.ClipboardActionsUpdateListener;
 import org.exbin.utils.binary_data.BinaryData;
 import org.exbin.utils.binary_data.EditableBinaryData;
 import org.exbin.xbup.core.type.XBData;
-import org.exbin.xbup.operation.Command;
-import org.exbin.xbup.operation.undo.XBUndoUpdateListener;
 
 /**
  * Hexadecimal editor panel.
  *
- * @version 0.1.0 2016/11/02
+ * @version 0.2.0 2016/12/20
  * @author ExBin Project (http://exbin.org)
  */
 public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, ClipboardActionsHandler, TextCharsetApi {
@@ -105,6 +106,7 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
     private Action copyAsCode = null;
     private Action pasteFromCode = null;
     private DeltaHexModule.EncodingStatusHandler encodingStatusHandler;
+    private long documentOriginalSize;
 
     private PropertyChangeListener propertyChangeListener;
     private CharsetChangeListener charsetChangeListener = null;
@@ -117,14 +119,16 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
     public HexPanel(SegmentsRepository segmentsRepository) {
         this.segmentsRepository = segmentsRepository;
         undoHandler = new CodeAreaUndoHandler(codeArea);
-        undoHandler.addUndoUpdateListener(new XBUndoUpdateListener() {
+        undoHandler.addUndoUpdateListener(new BinaryDataUndoUpdateListener() {
             @Override
             public void undoCommandPositionChanged() {
                 codeArea.repaint();
+                updateCurrentDocumentSize();
             }
 
             @Override
-            public void undoCommandAdded(Command cmnd) {
+            public void undoCommandAdded(BinaryDataCommand cmnd) {
+                updateCurrentDocumentSize();
             }
         });
         initComponents();
@@ -163,6 +167,7 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
                 if (hexSearchPanel.isVisible()) {
                     hexSearchPanel.dataChanged();
                 }
+                updateCurrentDocumentSize();
             }
         });
         // TODO use listener in code area component instead
@@ -190,7 +195,7 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
             }
         });
 
-        hexSearchPanel = new HexSearchPanel(this, false);
+        hexSearchPanel = new HexSearchPanel(this);
         hexSearchPanel.setClosePanelListener(new HexSearchPanel.ClosePanelListener() {
             @Override
             public void panelClosed() {
@@ -237,17 +242,22 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
         }
     }
 
-    public void showFindPanel() {
+    public void showFindPanel(boolean replace) {
         if (!findTextPanelVisible) {
             add(hexSearchPanel, BorderLayout.SOUTH);
             revalidate();
             findTextPanelVisible = true;
             hexSearchPanel.requestSearchFocus();
         }
+        hexSearchPanel.switchReplaceMode(replace);
+    }
+
+    public void findAgain() {
+        // TODO hexSearchPanel.f
     }
 
     @Override
-    public void findText(SearchParameters searchParameters) {
+    public void performFind(SearchParameters searchParameters) {
         HighlightCodeAreaPainter painter = (HighlightCodeAreaPainter) codeArea.getPainter();
         SearchCondition condition = searchParameters.getCondition();
         hexSearchPanel.clearStatus();
@@ -289,6 +299,24 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
                 throw new IllegalStateException("Unexpected search mode " + condition.getSearchMode().name());
         }
 
+    }
+
+    @Override
+    public void performReplace(SearchParameters searchParameters, ReplaceParameters replaceParameters) {
+        SearchCondition replaceCondition = replaceParameters.getCondition();
+        HighlightCodeAreaPainter painter = (HighlightCodeAreaPainter) codeArea.getPainter();
+        HighlightCodeAreaPainter.SearchMatch currentMatch = painter.getCurrentMatch();
+        if (currentMatch != null) {
+            EditableBinaryData editableData = ((EditableBinaryData) codeArea.getData());
+            editableData.remove(currentMatch.getPosition(), currentMatch.getLength());
+            if (replaceCondition.getSearchMode() == SearchCondition.SearchMode.BINARY) {
+                editableData.insert(currentMatch.getPosition(), replaceCondition.getBinaryData());
+            } else {
+                editableData.insert(currentMatch.getPosition(), replaceCondition.getSearchText().getBytes(codeArea.getCharset()));
+            }
+            painter.getMatches().remove(currentMatch);
+            codeArea.repaint();
+        }
     }
 
     private void updateClipboardActionsStatus() {
@@ -384,7 +412,7 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
         int maxBytesPerChar = (int) encoder.maxBytesPerChar();
         byte[] charData = new byte[maxBytesPerChar];
         long dataSize = data.getDataSize();
-        while (position < dataSize - findText.length()) {
+        while (position <= dataSize - findText.length()) {
             int matchCharLength = 0;
             int matchLength = 0;
             while (matchCharLength < findText.length()) {
@@ -618,6 +646,9 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
                 }
             }
 
+            documentOriginalSize = codeArea.getDataSize();
+            updateCurrentDocumentSize();
+            updateCurrentMemoryMode();
         } catch (IOException ex) {
             Logger.getLogger(HexPanel.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -636,6 +667,9 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
             } else {
                 codeArea.getData().saveToStream(new FileOutputStream(file));
             }
+            documentOriginalSize = codeArea.getDataSize();
+            updateCurrentDocumentSize();
+            updateCurrentMemoryMode();
         } catch (IOException ex) {
             Logger.getLogger(HexPanel.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -842,6 +876,23 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
 
     public void updatePosition() {
         hexSearchPanel.updatePosition(codeArea.getCaretPosition().getDataPosition(), codeArea.getDataSize());
+    }
+
+    private void updateCurrentDocumentSize() {
+        long dataSize = codeArea.getData().getDataSize();
+        long difference = dataSize - documentOriginalSize;
+        hexStatus.setCurrentDocumentSize(dataSize + " (" + (difference > 0 ? "+" + difference : difference) + ")");
+    }
+
+    private void updateCurrentMemoryMode() {
+        String memoryMode = "M";
+        if (codeArea.getEditationAllowed() == EditationAllowed.READ_ONLY) {
+            memoryMode = "R";
+        } else if (segmentsRepository != null) {
+            memoryMode = "\u0394";
+        }
+
+        hexStatus.setMemoryMode(memoryMode);
     }
 
     public void clearMatches() {
