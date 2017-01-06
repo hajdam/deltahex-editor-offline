@@ -1,29 +1,36 @@
 /*
  * Copyright (C) ExBin Project
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * This application or library is free software: you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public License as
+ * published by the Free Software Foundation, either version 3 of the License,
+ * or (at your option) any later version.
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * This application or library is distributed in the hope that it will be
+ * useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU Lesser General Public License for more details.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * You should have received a copy of the GNU Lesser General Public License
+ * along this application.  If not, see <http://www.gnu.org/licenses/>.
  */
 package org.exbin.framework.deltahex.panel;
 
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
+import java.text.ParseException;
+import java.util.ResourceBundle;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
+import javax.swing.SwingUtilities;
+import javax.swing.text.JTextComponent;
 import org.exbin.framework.gui.utils.LanguageUtils;
 import org.exbin.framework.gui.utils.WindowUtils;
 
 /**
  * Go-to position panel for hexadecimal editor.
  *
- * @version 0.2.0 2016/12/23
+ * @version 0.2.0 2016/12/30
  * @author ExBin Project (http://exbin.org)
  */
 public class GoToHexPanel extends javax.swing.JPanel {
@@ -36,6 +43,22 @@ public class GoToHexPanel extends javax.swing.JPanel {
 
     public GoToHexPanel() {
         initComponents();
+
+        // Spinner selection workaround from http://forums.sun.com/thread.jspa?threadID=409748&forumID=57
+        ((JSpinner.DefaultEditor) positionSpinner.getEditor()).getTextField().addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained(FocusEvent e) {
+                if (e.getSource() instanceof JTextComponent) {
+                    final JTextComponent textComponent = ((JTextComponent) e.getSource());
+                    SwingUtilities.invokeLater(new Runnable() {
+                        @Override
+                        public void run() {
+                            textComponent.selectAll();
+                        }
+                    });
+                }
+            }
+        });
     }
 
     /**
@@ -47,6 +70,7 @@ public class GoToHexPanel extends javax.swing.JPanel {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
+        positionTypeButtonGroup = new javax.swing.ButtonGroup();
         currentPositionLabel = new javax.swing.JLabel();
         currentPositionTextField = new javax.swing.JTextField();
         targetPositionLabel = new javax.swing.JLabel();
@@ -68,6 +92,7 @@ public class GoToHexPanel extends javax.swing.JPanel {
 
         goToPanel.setBorder(javax.swing.BorderFactory.createTitledBorder(resourceBundle.getString("GoToHexDialog.goToPanel.border.title"))); // NOI18N
 
+        positionTypeButtonGroup.add(absoluteRadioButton);
         absoluteRadioButton.setSelected(true);
         absoluteRadioButton.setText(resourceBundle.getString("GoToHexDialog.absoluteRadioButton.text")); // NOI18N
         absoluteRadioButton.addActionListener(new java.awt.event.ActionListener() {
@@ -76,6 +101,7 @@ public class GoToHexPanel extends javax.swing.JPanel {
             }
         });
 
+        positionTypeButtonGroup.add(relativeRadioButton);
         relativeRadioButton.setText(resourceBundle.getString("GoToHexDialog.relativeRadioButton.text")); // NOI18N
         relativeRadioButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -222,6 +248,10 @@ public class GoToHexPanel extends javax.swing.JPanel {
         positionSpinner.requestFocusInWindow();
     }
 
+    public ResourceBundle getResourceBundle() {
+        return resourceBundle;
+    }
+
     /**
      * Test method for this panel.
      *
@@ -231,6 +261,15 @@ public class GoToHexPanel extends javax.swing.JPanel {
         WindowUtils.invokeDialog(new GoToHexPanel());
     }
 
+    public void acceptInput() {
+        try {
+            positionSpinner.commitEdit();
+        } catch (ParseException ex) {
+            // Ignore parse exception
+        }
+    }
+
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JRadioButton absoluteRadioButton;
     private javax.swing.JLabel currentPositionLabel;
@@ -238,6 +277,7 @@ public class GoToHexPanel extends javax.swing.JPanel {
     private javax.swing.JLabel decimalPositionLabel;
     private javax.swing.JPanel goToPanel;
     private javax.swing.JSpinner positionSpinner;
+    private javax.swing.ButtonGroup positionTypeButtonGroup;
     private javax.swing.JRadioButton relativeRadioButton;
     private javax.swing.JLabel targetPositionLabel;
     private javax.swing.JTextField targetPositionTextField;

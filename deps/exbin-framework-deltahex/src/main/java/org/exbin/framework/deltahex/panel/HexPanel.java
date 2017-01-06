@@ -1,17 +1,18 @@
 /*
  * Copyright (C) ExBin Project
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * This application or library is free software: you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public License as
+ * published by the Free Software Foundation, either version 3 of the License,
+ * or (at your option) any later version.
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * This application or library is distributed in the hope that it will be
+ * useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU Lesser General Public License for more details.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * You should have received a copy of the GNU Lesser General Public License
+ * along this application.  If not, see <http://www.gnu.org/licenses/>.
  */
 package org.exbin.framework.deltahex.panel;
 
@@ -64,15 +65,17 @@ import org.exbin.deltahex.delta.SegmentsRepository;
 import org.exbin.deltahex.highlight.swing.HighlightCodeAreaPainter;
 import org.exbin.deltahex.operation.BinaryDataCommand;
 import org.exbin.deltahex.operation.swing.CodeAreaUndoHandler;
-import org.exbin.deltahex.operation.swing.CodeCommandHandler;
+import org.exbin.deltahex.operation.swing.CodeAreaOperationCommandHandler;
 import org.exbin.deltahex.operation.undo.BinaryDataUndoUpdateListener;
 import org.exbin.deltahex.swing.CodeArea;
-import org.exbin.framework.deltahex.DeltaHexModule;
+import org.exbin.framework.api.XBApplication;
+import org.exbin.framework.deltahex.CodeAreaPopupMenuHandler;
+import org.exbin.framework.deltahex.EncodingStatusHandler;
 import org.exbin.framework.deltahex.HexEditorProvider;
 import org.exbin.framework.deltahex.HexStatusApi;
 import org.exbin.framework.editor.text.TextCharsetApi;
 import org.exbin.framework.editor.text.TextEncodingStatusApi;
-import org.exbin.framework.editor.text.dialog.TextFontDialog;
+import org.exbin.framework.editor.text.TextFontApi;
 import org.exbin.framework.editor.text.panel.TextEncodingPanel;
 import org.exbin.framework.gui.file.api.FileType;
 import org.exbin.framework.gui.menu.api.ClipboardActionsHandler;
@@ -84,10 +87,10 @@ import org.exbin.xbup.core.type.XBData;
 /**
  * Hexadecimal editor panel.
  *
- * @version 0.2.0 2016/12/20
+ * @version 0.2.0 2017/01/05
  * @author ExBin Project (http://exbin.org)
  */
-public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, ClipboardActionsHandler, TextCharsetApi {
+public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, ClipboardActionsHandler, TextCharsetApi, TextFontApi, HexSearchPanelApi {
 
     private int id = 0;
     private SegmentsRepository segmentsRepository;
@@ -99,25 +102,23 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
     private Map<HexColorType, Color> defaultColors;
     private HexStatusApi hexStatus = null;
     private TextEncodingStatusApi encodingStatus = null;
+    private boolean deltaMemoryMode = false;
 
     private HexSearchPanel hexSearchPanel;
     private boolean findTextPanelVisible = false;
     private Action goToLineAction = null;
     private Action copyAsCode = null;
     private Action pasteFromCode = null;
-    private DeltaHexModule.EncodingStatusHandler encodingStatusHandler;
+    private EncodingStatusHandler encodingStatusHandler;
     private long documentOriginalSize;
 
     private PropertyChangeListener propertyChangeListener;
     private CharsetChangeListener charsetChangeListener = null;
     private ClipboardActionsUpdateListener clipboardActionsUpdateListener;
+    private ReleaseFileMethod releaseFileMethod = null;
+    private XBApplication application;
 
     public HexPanel() {
-        this(null);
-    }
-
-    public HexPanel(SegmentsRepository segmentsRepository) {
-        this.segmentsRepository = segmentsRepository;
         undoHandler = new CodeAreaUndoHandler(codeArea);
         undoHandler.addUndoUpdateListener(new BinaryDataUndoUpdateListener() {
             @Override
@@ -136,30 +137,23 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
     }
 
     public HexPanel(int id) {
-        this(null, id);
-    }
-
-    public HexPanel(SegmentsRepository segmentsRepository, int id) {
-        this(segmentsRepository);
+        this();
         this.id = id;
     }
 
     private void init() {
         codeArea = new CodeArea();
         codeArea.setPainter(new HighlightCodeAreaPainter(codeArea));
-        if (segmentsRepository != null) {
-            codeArea.setData(segmentsRepository.createDocument());
-        } else {
-            codeArea.setData(new XBData());
-        }
+        setNewData();
         codeArea.setHandleClipboard(false);
+        codeArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
         codeArea.addSelectionChangedListener(new SelectionChangedListener() {
             @Override
             public void selectionChanged(SelectionRange selection) {
                 updateClipboardActionsStatus();
             }
         });
-        CodeCommandHandler commandHandler = new CodeCommandHandler(codeArea, undoHandler);
+        CodeAreaOperationCommandHandler commandHandler = new CodeAreaOperationCommandHandler(codeArea, undoHandler);
         codeArea.setCommandHandler(commandHandler);
         codeArea.addDataChangedListener(new DataChangedListener() {
             @Override
@@ -199,12 +193,31 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
         hexSearchPanel.setClosePanelListener(new HexSearchPanel.ClosePanelListener() {
             @Override
             public void panelClosed() {
-                hideFindPanel();
+                hideSearchPanel();
             }
         });
     }
 
-    public void hideFindPanel() {
+    public void setApplication(XBApplication application) {
+        this.application = application;
+        hexSearchPanel.setApplication(application);
+    }
+
+    public void setSegmentsRepository(SegmentsRepository segmentsRepository) {
+        this.segmentsRepository = segmentsRepository;
+    }
+
+    public void showSearchPanel(boolean replace) {
+        if (!findTextPanelVisible) {
+            add(hexSearchPanel, BorderLayout.SOUTH);
+            revalidate();
+            findTextPanelVisible = true;
+            hexSearchPanel.requestSearchFocus();
+        }
+        hexSearchPanel.switchReplaceMode(replace);
+    }
+
+    public void hideSearchPanel() {
         if (findTextPanelVisible) {
             hexSearchPanel.cancelSearch();
             hexSearchPanel.clearSearch();
@@ -240,16 +253,6 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
         if (codeArea.isWrapMode() != mode) {
             changeLineWrap();
         }
-    }
-
-    public void showFindPanel(boolean replace) {
-        if (!findTextPanelVisible) {
-            add(hexSearchPanel, BorderLayout.SOUTH);
-            revalidate();
-            findTextPanelVisible = true;
-            hexSearchPanel.requestSearchFocus();
-        }
-        hexSearchPanel.switchReplaceMode(replace);
     }
 
     public void findAgain() {
@@ -298,7 +301,6 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
             default:
                 throw new IllegalStateException("Unexpected search mode " + condition.getSearchMode().name());
         }
-
     }
 
     @Override
@@ -571,21 +573,14 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
         }
     }
 
+    @Override
     public void setCurrentFont(Font font) {
         codeArea.setFont(font);
     }
 
+    @Override
     public Font getCurrentFont() {
         return codeArea.getFont();
-    }
-
-    @Override
-    public void showFontDialog(TextFontDialog dlg) {
-        dlg.setStoredFont(codeArea.getFont());
-        dlg.setVisible(true);
-        if (dlg.getDialogOption() == JOptionPane.OK_OPTION) {
-            codeArea.setFont(dlg.getStoredFont());
-        }
     }
 
     public Color getFoundTextBackgroundColor() {
@@ -630,16 +625,31 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
     @Override
     public void loadFromFile(URI fileUri, FileType fileType) {
         File file = new File(fileUri);
+        if (!file.isFile()) {
+            JOptionPane.showOptionDialog(this,
+                    "File not found",
+                    "Unable to load file",
+                    JOptionPane.CLOSED_OPTION,
+                    JOptionPane.ERROR_MESSAGE,
+                    null, null, null);
+            return;
+        }
+
         try {
-            DeltaDocument document;
-            if (segmentsRepository != null) {
-                // TODO Support for delta mode
+            BinaryData oldData = codeArea.getData();
+            if (deltaMemoryMode) {
                 FileDataSource openFileSource = segmentsRepository.openFileSource(file);
-                document = segmentsRepository.createDocument(openFileSource);
+                DeltaDocument document = segmentsRepository.createDocument(openFileSource);
                 codeArea.setData(document);
+                this.fileUri = fileUri;
+                oldData.dispose();
             } else {
                 try (FileInputStream fileStream = new FileInputStream(file)) {
                     BinaryData data = codeArea.getData();
+                    if (!(data instanceof XBData)) {
+                        data = new XBData();
+                        oldData.dispose();
+                    }
                     ((EditableBinaryData) data).loadFromStream(fileStream);
                     codeArea.setData(data);
                     this.fileUri = fileUri;
@@ -660,12 +670,20 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
     public void saveToFile(URI fileUri, FileType fileType) {
         File file = new File(fileUri);
         try {
-            if (segmentsRepository != null) {
-                // TODO support for delta mode
-                // TODO freeze window
-                segmentsRepository.saveDocument((DeltaDocument) codeArea.getData());
+            if (codeArea.getData() instanceof DeltaDocument) {
+                // TODO freeze window / replace with progress bar
+                DeltaDocument document = (DeltaDocument) codeArea.getData();
+                if (!document.getFileSource().getFile().equals(file)) {
+                    FileDataSource fileSource = segmentsRepository.openFileSource(file);
+                    document.setFileSource(fileSource);
+                }
+                segmentsRepository.saveDocument(document);
+                this.fileUri = fileUri;
             } else {
-                codeArea.getData().saveToStream(new FileOutputStream(file));
+                try (FileOutputStream outputStream = new FileOutputStream(file)) {
+                    codeArea.getData().saveToStream(outputStream);
+                    this.fileUri = fileUri;
+                }
             }
             documentOriginalSize = codeArea.getDataSize();
             updateCurrentDocumentSize();
@@ -674,7 +692,6 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
             Logger.getLogger(HexPanel.class.getName()).log(Level.SEVERE, null, ex);
         }
 
-        this.fileUri = fileUri;
         undoHandler.setSyncPoint();
     }
 
@@ -685,10 +702,17 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
 
     @Override
     public void newFile() {
-        ((EditableBinaryData) codeArea.getData()).clear();
-        codeArea.setData(codeArea.getData());
-        codeArea.repaint();
+        if (codeArea.getData() instanceof DeltaDocument) {
+            segmentsRepository.dropDocument((DeltaDocument) codeArea.getData());
+        }
+        setNewData();
+        fileUri = null;
+        documentOriginalSize = codeArea.getDataSize();
+        codeArea.notifyDataChanged();
+        updateCurrentDocumentSize();
+        updateCurrentMemoryMode();
         undoHandler.clear();
+        codeArea.repaint();
     }
 
     @Override
@@ -742,6 +766,7 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
         codeArea.setCharset(charset);
     }
 
+    @Override
     public Font getDefaultFont() {
         return defaultFont;
     }
@@ -831,7 +856,52 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
                     encodingStatusHandler.popupEncodingsMenu(mouseEvent);
                 }
             }
+
+            @Override
+            public void changeMemoryMode(HexStatusApi.MemoryMode memoryMode) {
+                boolean newDeltaMode = memoryMode == HexStatusApi.MemoryMode.DELTA_MODE;
+                if (newDeltaMode != deltaMemoryMode) {
+                    // Switch memory mode
+                    if (fileUri != null) {
+                        // If document is connected to file, attempt to release first if modified and then simply reload
+                        if (isModified()) {
+                            if (releaseFileMethod != null && releaseFileMethod.execute()) {
+                                deltaMemoryMode = newDeltaMode;
+                                loadFromFile(fileUri, null);
+                                codeArea.clearSelection();
+                                codeArea.setCaretPosition(0);
+                            }
+                        } else {
+                            deltaMemoryMode = newDeltaMode;
+                            loadFromFile(fileUri, null);
+                        }
+                    } else {
+                        // If document unsaved in memory, switch data in code area
+                        BinaryData oldData = codeArea.getData();
+                        if (codeArea.getData() instanceof DeltaDocument) {
+                            XBData data = new XBData();
+                            data.insert(0, codeArea.getData());
+                            codeArea.setData(data);
+                        } else {
+                            DeltaDocument document = segmentsRepository.createDocument();
+                            document.insert(0, oldData);
+                            codeArea.setData(document);
+                        }
+                        undoHandler.clear();
+                        oldData.dispose();
+                        codeArea.notifyDataChanged();
+                        updateCurrentMemoryMode();
+                        deltaMemoryMode = newDeltaMode;
+                    }
+                    deltaMemoryMode = newDeltaMode;
+                }
+            }
         });
+
+        if (deltaMemoryMode) {
+            setNewData();
+        }
+        updateCurrentMemoryMode();
     }
 
     @Override
@@ -866,6 +936,7 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
         return codeArea.canPaste();
     }
 
+    @Override
     public void setMatchPosition(int matchPosition) {
         HighlightCodeAreaPainter painter = (HighlightCodeAreaPainter) codeArea.getPainter();
         painter.setCurrentMatchIndex(matchPosition);
@@ -874,6 +945,7 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
         codeArea.repaint();
     }
 
+    @Override
     public void updatePosition() {
         hexSearchPanel.updatePosition(codeArea.getCaretPosition().getDataPosition(), codeArea.getDataSize());
     }
@@ -884,17 +956,24 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
         hexStatus.setCurrentDocumentSize(dataSize + " (" + (difference > 0 ? "+" + difference : difference) + ")");
     }
 
-    private void updateCurrentMemoryMode() {
-        String memoryMode = "M";
-        if (codeArea.getEditationAllowed() == EditationAllowed.READ_ONLY) {
-            memoryMode = "R";
-        } else if (segmentsRepository != null) {
-            memoryMode = "\u0394";
-        }
-
-        hexStatus.setMemoryMode(memoryMode);
+    public void setDeltaMemoryMode(boolean deltaMemoryMode) {
+        this.deltaMemoryMode = deltaMemoryMode;
     }
 
+    private void updateCurrentMemoryMode() {
+        HexStatusApi.MemoryMode memoryMode = HexStatusApi.MemoryMode.RAM_MEMORY;
+        if (codeArea.getEditationAllowed() == EditationAllowed.READ_ONLY) {
+            memoryMode = HexStatusApi.MemoryMode.READ_ONLY;
+        } else if (codeArea.getData() instanceof DeltaDocument) {
+            memoryMode = HexStatusApi.MemoryMode.DELTA_MODE;
+        }
+
+        if (hexStatus != null) {
+            hexStatus.setMemoryMode(memoryMode);
+        }
+    }
+
+    @Override
     public void clearMatches() {
         HighlightCodeAreaPainter painter = (HighlightCodeAreaPainter) codeArea.getPainter();
         painter.clearMatches();
@@ -904,11 +983,11 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
         this.goToLineAction = goToLineAction;
     }
 
-    public void setEncodingStatusHandler(DeltaHexModule.EncodingStatusHandler encodingStatusHandler) {
+    public void setEncodingStatusHandler(EncodingStatusHandler encodingStatusHandler) {
         this.encodingStatusHandler = encodingStatusHandler;
     }
 
-    public void setCodeAreaPopupMenuHandler(DeltaHexModule.CodeAreaPopupMenuHandler hexCodePopupMenuHandler) {
+    public void setCodeAreaPopupMenuHandler(CodeAreaPopupMenuHandler hexCodePopupMenuHandler) {
         hexSearchPanel.setHexCodePopupMenuHandler(hexCodePopupMenuHandler);
     }
 
@@ -918,6 +997,10 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
 
     public void setPasteFromCode(Action pasteFromCode) {
         this.pasteFromCode = pasteFromCode;
+    }
+
+    public void setReleaseFileMethod(ReleaseFileMethod releaseFileMethod) {
+        this.releaseFileMethod = releaseFileMethod;
     }
 
     @Override
@@ -954,8 +1037,21 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
         });
     }
 
+    private void setNewData() {
+        if (deltaMemoryMode) {
+            codeArea.setData(segmentsRepository.createDocument());
+        } else {
+            codeArea.setData(new XBData());
+        }
+    }
+
     public static interface CharsetChangeListener {
 
         public void charsetChanged();
+    }
+
+    public static interface ReleaseFileMethod {
+
+        public boolean execute();
     }
 }

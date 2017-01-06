@@ -16,11 +16,14 @@
  */
 package org.exbin.framework.gui.frame;
 
+import java.awt.Dialog;
 import java.awt.Frame;
+import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.util.ResourceBundle;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
+import javax.swing.JDialog;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import org.exbin.framework.api.XBApplication;
@@ -39,16 +42,17 @@ import org.exbin.framework.gui.utils.WindowUtils;
 import org.exbin.xbup.plugin.XBModuleHandler;
 
 /**
- * Implementation of XBUP framework undo/redo module.
+ * Implementation of XBUP framework frame module.
  *
- * @version 0.2.0 2016/12/04
+ * @version 0.2.0 2016/12/29
  * @author ExBin Project (http://exbin.org)
  */
 public class GuiFrameModule implements GuiFrameModuleApi {
 
     public static final String FILE_EXIT_GROUP_ID = MODULE_ID + ".exit";
     public static final String VIEW_BARS_GROUP_ID = MODULE_ID + ".view";
-    public static final String PREFERENCS_FRAME_PREFIX = "mainFrame.";
+    public static final String PREFERENCES_FRAME_PREFIX = "mainFrame.";
+    public static final String PREFERENCES_DIALOG_TITLE = "Dialog.title";
 
     private XBApplication application;
     private ResourceBundle resourceBundle;
@@ -108,8 +112,8 @@ public class GuiFrameModule implements GuiFrameModuleApi {
     public void loadFramePosition() {
         getFrameHandler();
         WindowPosition framePosition = new WindowPosition();
-        if (framePosition.preferencesExists(application.getAppPreferences(), PREFERENCS_FRAME_PREFIX)) {
-            framePosition.loadFromPreferences(application.getAppPreferences(), PREFERENCS_FRAME_PREFIX);
+        if (framePosition.preferencesExists(application.getAppPreferences(), PREFERENCES_FRAME_PREFIX)) {
+            framePosition.loadFromPreferences(application.getAppPreferences(), PREFERENCES_FRAME_PREFIX);
             WindowUtils.setWindowPosition(frame, framePosition);
         }
     }
@@ -117,7 +121,7 @@ public class GuiFrameModule implements GuiFrameModuleApi {
     @Override
     public void saveFramePosition() {
         WindowPosition windowPosition = WindowUtils.getWindowPosition(frame);
-        windowPosition.saveToPreferences(application.getAppPreferences(), PREFERENCS_FRAME_PREFIX);
+        windowPosition.saveToPreferences(application.getAppPreferences(), PREFERENCES_FRAME_PREFIX);
     }
 
     @Override
@@ -278,5 +282,32 @@ public class GuiFrameModule implements GuiFrameModuleApi {
         if (!menuModule.menuGroupExists(GuiFrameModuleApi.VIEW_MENU_ID, VIEW_BARS_GROUP_ID)) {
             menuModule.registerMenuGroup(GuiFrameModuleApi.VIEW_MENU_ID, new MenuGroup(VIEW_BARS_GROUP_ID, new MenuPosition(PositionMode.TOP), SeparationMode.BELOW));
         }
+    }
+
+    @Override
+    public JDialog createDialog() {
+        return createDialog(getFrame(), Dialog.ModalityType.APPLICATION_MODAL);
+    }
+
+    @Override
+    public JDialog createDialog(Window parentWindow, Dialog.ModalityType modalityType) {
+        return createDialog(parentWindow, modalityType, null);
+    }
+
+    @Override
+    public JDialog createDialog(JPanel panel) {
+        return createDialog(getFrame(), Dialog.ModalityType.APPLICATION_MODAL, panel);
+    }
+
+    @Override
+    public JDialog createDialog(Window parentWindow, Dialog.ModalityType modalityType, JPanel panel) {
+        JDialog dialog = WindowUtils.createDialog(panel, parentWindow, modalityType);
+        dialog.setIconImage(application.getApplicationIcon());
+        return dialog;
+    }
+
+    @Override
+    public void setDialogTitle(JDialog dialog, ResourceBundle resourceBundle) {
+        dialog.setTitle(resourceBundle.getString(PREFERENCES_DIALOG_TITLE));
     }
 }

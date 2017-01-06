@@ -1,32 +1,37 @@
 /*
  * Copyright (C) ExBin Project
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * This application or library is free software: you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public License as
+ * published by the Free Software Foundation, either version 3 of the License,
+ * or (at your option) any later version.
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * This application or library is distributed in the hope that it will be
+ * useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU Lesser General Public License for more details.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * You should have received a copy of the GNU Lesser General Public License
+ * along this application.  If not, see <http://www.gnu.org/licenses/>.
  */
 package org.exbin.framework.deltahex;
 
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Font;
 import java.awt.KeyboardFocusManager;
 import java.awt.Point;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.prefs.Preferences;
 import javax.swing.Action;
+import javax.swing.JDialog;
+import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.SwingUtilities;
 import org.exbin.deltahex.SelectionChangedListener;
@@ -44,8 +49,14 @@ import org.exbin.framework.deltahex.panel.HexColorType;
 import org.exbin.framework.deltahex.panel.HexPanel;
 import org.exbin.framework.deltahex.panel.HexStatusPanel;
 import org.exbin.framework.editor.text.EncodingsHandler;
+import org.exbin.framework.editor.text.TextFontApi;
+import org.exbin.framework.editor.text.panel.AddEncodingPanel;
 import org.exbin.framework.editor.text.panel.TextEncodingOptionsPanel;
+import org.exbin.framework.editor.text.panel.TextEncodingPanel;
 import org.exbin.framework.editor.text.panel.TextEncodingPanelApi;
+import org.exbin.framework.editor.text.panel.TextFontOptionsPanel;
+import org.exbin.framework.editor.text.panel.TextFontPanel;
+import org.exbin.framework.editor.text.panel.TextFontPanelApi;
 import org.exbin.framework.gui.docking.api.GuiDockingModuleApi;
 import org.exbin.framework.gui.file.api.FileHandlingActionsApi;
 import org.exbin.framework.gui.file.api.GuiFileModuleApi;
@@ -64,12 +75,17 @@ import org.exbin.framework.gui.menu.api.ToolBarGroup;
 import org.exbin.framework.gui.menu.api.ToolBarPosition;
 import org.exbin.framework.gui.options.api.GuiOptionsModuleApi;
 import org.exbin.framework.gui.utils.LanguageUtils;
+import org.exbin.framework.gui.utils.WindowUtils;
+import org.exbin.framework.gui.utils.handler.DefaultControlHandler;
+import org.exbin.framework.gui.utils.handler.OptionsControlHandler;
+import org.exbin.framework.gui.utils.panel.DefaultControlPanel;
+import org.exbin.framework.gui.utils.panel.OptionsControlPanel;
 import org.exbin.xbup.plugin.XBModuleHandler;
 
 /**
  * Hexadecimal editor module.
  *
- * @version 0.2.0 2016/12/08
+ * @version 0.2.0 2017/01/06
  * @author ExBin Project (http://exbin.org)
  */
 public class DeltaHexModule implements XBApplicationModule {
@@ -88,11 +104,16 @@ public class DeltaHexModule implements XBApplicationModule {
 
     public static final String HEX_STATUS_BAR_ID = "hexStatusBar";
 
+    public static final String PREFERENCES_MEMORY_MODE = "memoryMode";
+
     private java.util.ResourceBundle resourceBundle = null;
 
     private XBApplication application;
     private HexEditorProvider editorProvider;
     private HexStatusPanel hexStatusPanel;
+    private HexColorOptionsPanel hexColorOptionsPanel;
+    private TextEncodingOptionsPanel textEncodingOptionsPanel;
+    private TextFontOptionsPanel textFontOptionsPanel;
 
     private FindReplaceHandler findReplaceHandler;
     private ViewNonprintablesHandler viewNonprintablesHandler;
@@ -108,8 +129,6 @@ public class DeltaHexModule implements XBApplicationModule {
     private HexCharactersCaseHandler hexCharactersCaseHandler;
     private ClipboardCodeHandler clipboardCodeHandler;
     private CodeAreaPopupMenuHandler codeAreaPopupMenuHandler;
-
-    private boolean deltaMode = false;
 
     public DeltaHexModule() {
     }
@@ -133,16 +152,15 @@ public class DeltaHexModule implements XBApplicationModule {
 
     public HexEditorProvider getEditorProvider() {
         if (editorProvider == null) {
-            HexPanel panel;
-            if (deltaMode) {
-                SegmentsRepository segmentsRepository = new SegmentsRepository();
-                panel = new HexPanel(segmentsRepository);
-            } else {
-                panel = new HexPanel();
-            }
+            String deltaModeString = application.getAppPreferences().get(PREFERENCES_MEMORY_MODE, HexStatusApi.MemoryMode.DELTA_MODE.getPreferencesValue());
+            HexStatusApi.MemoryMode memoryMode = HexStatusApi.MemoryMode.findByPreferencesValue(deltaModeString);
+            HexPanel panel = new HexPanel();
+            panel.setSegmentsRepository(new SegmentsRepository());
+            panel.setDeltaMemoryMode(memoryMode == HexStatusApi.MemoryMode.DELTA_MODE);
             editorProvider = panel;
 
             panel.setPopupMenu(createPopupMenu(panel.getId()));
+            panel.setApplication(application);
             panel.setCodeAreaPopupMenuHandler(getCodeAreaPopupMenuHandler());
             panel.setGoToLineAction(getGoToLineHandler().getGoToLineAction());
             panel.setCopyAsCode(getClipboardCodeHandler().getCopyAsCodeAction());
@@ -156,6 +174,14 @@ public class DeltaHexModule implements XBApplicationModule {
                 @Override
                 public void popupEncodingsMenu(MouseEvent mouseEvent) {
                     encodingsHandler.popupEncodingsMenu(mouseEvent);
+                }
+            });
+            panel.setReleaseFileMethod(new HexPanel.ReleaseFileMethod() {
+                @Override
+                public boolean execute() {
+                    GuiFileModuleApi fileModule = application.getModuleRepository().getModuleByInterface(GuiFileModuleApi.class);
+                    FileHandlingActionsApi fileHandlingActions = fileModule.getFileHandlingActions();
+                    return fileHandlingActions.releaseFile();
                 }
             });
         }
@@ -189,6 +215,7 @@ public class DeltaHexModule implements XBApplicationModule {
                 }
             });
             ((HexEditorHandler) editorProvider).setEditorViewHandling(dockingModule.getEditorViewHandling());
+            ((HexEditorHandler) editorProvider).setSegmentsRepository(new SegmentsRepository());
             ((HexEditorHandler) editorProvider).init();
             GuiFileModuleApi fileModule = application.getModuleRepository().getModuleByInterface(GuiFileModuleApi.class);
             FileHandlingActionsApi fileHandlingActions = fileModule.getFileHandlingActions();
@@ -237,7 +264,9 @@ public class DeltaHexModule implements XBApplicationModule {
             }
         };
 
-        optionsModule.addOptionsPanel(new HexColorOptionsPanel(textColorPanelFrame));
+        hexColorOptionsPanel = new HexColorOptionsPanel();
+        hexColorOptionsPanel.setPanelApi(textColorPanelFrame);
+        optionsModule.addOptionsPanel(hexColorOptionsPanel);
 
         HexAppearancePanelFrame textAppearancePanelFrame;
         textAppearancePanelFrame = new HexAppearancePanelFrame() {
@@ -254,7 +283,7 @@ public class DeltaHexModule implements XBApplicationModule {
 
         optionsModule.extendAppearanceOptionsPanel(new HexAppearanceOptionsPanel(textAppearancePanelFrame));
 
-        TextEncodingPanelApi textEncodingPanelFrame = new TextEncodingPanelApi() {
+        TextEncodingPanelApi textEncodingPanelApi = new TextEncodingPanelApi() {
             @Override
             public List<String> getEncodings() {
                 return getEncodingsHandler().getEncodings();
@@ -278,7 +307,91 @@ public class DeltaHexModule implements XBApplicationModule {
                 }
             }
         };
-        optionsModule.addOptionsPanel(new TextEncodingOptionsPanel(textEncodingPanelFrame));
+        textEncodingOptionsPanel = new TextEncodingOptionsPanel(textEncodingPanelApi);
+        textEncodingOptionsPanel.setAddEncodingsOperation(new TextEncodingPanel.AddEncodingsOperation() {
+            @Override
+            public List<String> run(List<String> usedEncodings) {
+                final List<String> result = new ArrayList<>();
+                GuiFrameModuleApi frameModule = application.getModuleRepository().getModuleByInterface(GuiFrameModuleApi.class);
+                final AddEncodingPanel addEncodingPanel = new AddEncodingPanel();
+                addEncodingPanel.setUsedEncodings(usedEncodings);
+                DefaultControlPanel controlPanel = new DefaultControlPanel(addEncodingPanel.getResourceBundle());
+                JPanel dialogPanel = WindowUtils.createDialogPanel(addEncodingPanel, controlPanel);
+                final JDialog addEncodingDialog = frameModule.createDialog(dialogPanel);
+                controlPanel.setHandler(new DefaultControlHandler() {
+                    @Override
+                    public void controlActionPerformed(DefaultControlHandler.ControlActionType actionType) {
+                        if (actionType == DefaultControlHandler.ControlActionType.OK) {
+                            result.addAll(addEncodingPanel.getEncodings());
+                        }
+
+                        WindowUtils.closeWindow(addEncodingDialog);
+                    }
+                });
+                frameModule.setDialogTitle(addEncodingDialog, addEncodingPanel.getResourceBundle());
+                WindowUtils.assignGlobalKeyListener(addEncodingDialog, controlPanel.createOkCancelListener());
+                addEncodingDialog.setLocationRelativeTo(addEncodingDialog.getParent());
+                addEncodingDialog.setVisible(true);
+                return result;
+            }
+        });
+        optionsModule.addOptionsPanel(textEncodingOptionsPanel);
+
+        TextFontPanelApi textFontPanelApi = new TextFontPanelApi() {
+            @Override
+            public Font getCurrentFont() {
+                return ((TextFontApi) getEditorProvider()).getCurrentFont();
+            }
+
+            @Override
+            public Font getDefaultFont() {
+                return ((TextFontApi) getEditorProvider()).getDefaultFont();
+            }
+
+            @Override
+            public void setCurrentFont(Font font) {
+                ((TextFontApi) getEditorProvider()).setCurrentFont(font);
+            }
+        };
+        textFontOptionsPanel = new TextFontOptionsPanel(textFontPanelApi);
+        textFontOptionsPanel.setFontChangeAction(new TextFontOptionsPanel.FontChangeAction() {
+            @Override
+            public Font changeFont(Font currentFont) {
+                final Result result = new Result();
+                GuiFrameModuleApi frameModule = application.getModuleRepository().getModuleByInterface(GuiFrameModuleApi.class);
+                final TextFontPanel fontPanel = new TextFontPanel();
+                fontPanel.setStoredFont(currentFont);
+                OptionsControlPanel controlPanel = new OptionsControlPanel();
+                JPanel dialogPanel = WindowUtils.createDialogPanel(fontPanel, controlPanel);
+                final JDialog dialog = frameModule.createDialog(dialogPanel);
+                WindowUtils.addHeaderPanel(dialog, fontPanel.getResourceBundle());
+                frameModule.setDialogTitle(dialog, fontPanel.getResourceBundle());
+                controlPanel.setHandler(new OptionsControlHandler() {
+                    @Override
+                    public void controlActionPerformed(OptionsControlHandler.ControlActionType actionType) {
+                        if (actionType != OptionsControlHandler.ControlActionType.CANCEL) {
+                            if (actionType == OptionsControlHandler.ControlActionType.SAVE) {
+                                fontPanel.saveToPreferences(application.getAppPreferences());
+                            }
+                            result.font = fontPanel.getStoredFont();
+                        }
+
+                        WindowUtils.closeWindow(dialog);
+                    }
+                });
+                WindowUtils.assignGlobalKeyListener(dialog, controlPanel.createOkCancelListener());
+                dialog.setLocationRelativeTo(dialog.getParent());
+                dialog.setVisible(true);
+
+                return result.font;
+            }
+
+            class Result {
+
+                Font font;
+            }
+        });
+        optionsModule.addOptionsPanel(textFontOptionsPanel);
     }
 
     public void registerWordWrapping() {
@@ -603,6 +716,17 @@ public class DeltaHexModule implements XBApplicationModule {
 
     public void loadFromPreferences(Preferences preferences) {
         encodingsHandler.loadFromPreferences(preferences);
+
+        // TODO move it out of panels
+        if (hexColorOptionsPanel != null) {
+            hexColorOptionsPanel.loadFromPreferences(preferences);
+            hexColorOptionsPanel.applyPreferencesChanges();
+        }
+
+        if (textFontOptionsPanel != null) {
+            textFontOptionsPanel.loadFromPreferences(preferences);
+            textFontOptionsPanel.applyPreferencesChanges();
+        }
     }
 
     public CodeAreaPopupMenuHandler getCodeAreaPopupMenuHandler() {
@@ -680,23 +804,5 @@ public class DeltaHexModule implements XBApplicationModule {
                 return SwingUtilities.getDeepestComponentAt(e.getComponent(), e.getX(), e.getY());
             }
         });
-    }
-
-    public void setDeltaMode(boolean deltaMode) {
-        this.deltaMode = deltaMode;
-    }
-
-    public static interface EncodingStatusHandler {
-
-        void cycleEncodings();
-
-        void popupEncodingsMenu(MouseEvent mouseEvent);
-    }
-
-    public static interface CodeAreaPopupMenuHandler {
-
-        JPopupMenu createPopupMenu(CodeArea codeArea, String menuPostfix);
-
-        void dropPopupMenu(String menuPostfix);
     }
 }

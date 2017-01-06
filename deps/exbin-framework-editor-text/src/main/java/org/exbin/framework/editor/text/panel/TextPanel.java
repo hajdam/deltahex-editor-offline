@@ -52,8 +52,8 @@ import javax.swing.text.Highlighter.Highlight;
 import javax.swing.undo.UndoableEdit;
 import org.exbin.framework.editor.text.EditorTextModule;
 import org.exbin.framework.editor.text.TextCharsetApi;
-import org.exbin.framework.editor.text.dialog.FindTextDialog;
-import org.exbin.framework.editor.text.dialog.TextFontDialog;
+import org.exbin.framework.editor.text.TextFontApi;
+import org.exbin.framework.editor.text.handler.FindTextPanelApi;
 import org.exbin.framework.gui.editor.api.EditorProvider;
 import org.exbin.framework.gui.file.api.FileType;
 import org.exbin.framework.gui.menu.api.ClipboardActionsHandler;
@@ -79,10 +79,10 @@ import org.exbin.xbup.core.type.XBEncodingText;
 /**
  * Text editor panel.
  *
- * @version 0.2.0 2016/08/15
+ * @version 0.2.0 2017/01/04
  * @author ExBin Project (http://exbin.org)
  */
-public class TextPanel extends javax.swing.JPanel implements EditorProvider, ClipboardActionsHandler, UndoActionsHandler, TextCharsetApi {
+public class TextPanel extends javax.swing.JPanel implements EditorProvider, ClipboardActionsHandler, UndoActionsHandler, TextCharsetApi, TextFontApi {
 
     private final TextPanelCompoundUndoManager undoManagement = new TextPanelCompoundUndoManager();
     private UndoUpdateListener undoUpdateListener = null;
@@ -172,7 +172,7 @@ public class TextPanel extends javax.swing.JPanel implements EditorProvider, Cli
         }
     }
 
-    public void findText(FindTextDialog dialog) {
+    public void findText(FindTextPanelApi findTextPanelApi) {
         String text = textArea.getText();
         int pos = textArea.getCaretPosition();
         if (highlight != null) {
@@ -180,16 +180,16 @@ public class TextPanel extends javax.swing.JPanel implements EditorProvider, Cli
                 pos++;
             }
             textArea.getHighlighter().removeHighlight(highlight);
-        } else if (dialog.getSearchFromStart()) {
+        } else if (findTextPanelApi.getSearchFromStart()) {
             pos = 0;
         }
-        String findText = dialog.getFindText();
+        String findText = findTextPanelApi.getFindText();
         pos = text.indexOf(findText, pos);
         if (pos >= 0) {
             try {
                 int toPos;
-                if (dialog.getShallReplace()) {
-                    String replaceText = dialog.getReplaceText();
+                if (findTextPanelApi.getShallReplace()) {
+                    String replaceText = findTextPanelApi.getReplaceText();
                     textArea.replaceRange(replaceText, pos, pos + findText.length());
                     toPos = pos + replaceText.length();
                 } else {
@@ -309,20 +309,14 @@ public class TextPanel extends javax.swing.JPanel implements EditorProvider, Cli
         }
     }
 
+    @Override
     public void setCurrentFont(Font font) {
         textArea.setFont(font);
     }
 
+    @Override
     public Font getCurrentFont() {
         return textArea.getFont();
-    }
-
-    public void showFontDialog(TextFontDialog dlg) {
-        dlg.setStoredFont(textArea.getFont());
-        dlg.setVisible(true);
-        if (dlg.getDialogOption() == JOptionPane.OK_OPTION) {
-            textArea.setFont(dlg.getStoredFont());
-        }
     }
 
     public Color getFoundTextBackgroundColor() {
@@ -490,7 +484,7 @@ public class TextPanel extends javax.swing.JPanel implements EditorProvider, Cli
             int lastSegment = path.lastIndexOf("/");
             return lastSegment < 0 ? path : path.substring(lastSegment + 1);
         }
-        
+
         return null;
     }
 
@@ -579,6 +573,7 @@ public class TextPanel extends javax.swing.JPanel implements EditorProvider, Cli
         this.charset = charset;
     }
 
+    @Override
     public Font getDefaultFont() {
         return defaultFont;
     }
