@@ -17,6 +17,8 @@
 package org.exbin.xbup.core.parser.token.event.convert;
 
 import java.io.IOException;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import org.exbin.xbup.core.block.XBFixedBlockType;
 import org.exbin.xbup.core.parser.XBProcessingException;
 import org.exbin.xbup.core.parser.token.XBAttributeToken;
@@ -36,34 +38,36 @@ import org.exbin.xbup.core.ubnumber.UBNatural;
 /**
  * XBUP level 0 to level 1 event convertor.
  *
- * @version 0.1.21 2011/08/21
+ * @version 0.2.1 2017/06/05
  * @author ExBin Project (http://exbin.org)
  */
 public class XBToXBTEventConvertor implements XBEventListener, XBTEventProducer {
 
+    @Nonnull
     private XBTEventListener target;
     private boolean expectType;
+    @Nullable
     private UBNatural group;
 
-    public XBToXBTEventConvertor(XBTEventListener target) {
+    public XBToXBTEventConvertor(@Nonnull XBTEventListener target) {
         this.target = target;
         expectType = true;
     }
 
     @Override
-    public void attachXBTEventListener(XBTEventListener eventListener) {
+    public void attachXBTEventListener(@Nonnull XBTEventListener eventListener) {
         target = eventListener;
     }
 
     @Override
-    public void putXBToken(XBToken token) throws XBProcessingException, IOException {
+    public void putXBToken(@Nonnull XBToken token) throws XBProcessingException, IOException {
         switch (token.getTokenType()) {
             case BEGIN: {
                 if (expectType && group != null) {
-                    target.putXBTToken(new XBTTypeToken(new XBFixedBlockType(group.getLong(), 0)));
+                    target.putXBTToken(XBTTypeToken.create(new XBFixedBlockType(group.getLong(), 0)));
                 }
 
-                target.putXBTToken(new XBTBeginToken(((XBBeginToken) token).getTerminationMode()));
+                target.putXBTToken(XBTBeginToken.create(((XBBeginToken) token).getTerminationMode()));
                 expectType = true;
                 group = null;
                 break;
@@ -72,34 +76,37 @@ public class XBToXBTEventConvertor implements XBEventListener, XBTEventProducer 
             case ATTRIBUTE: {
                 if (expectType) {
                     if (group != null) {
-                        target.putXBTToken(new XBTTypeToken(new XBFixedBlockType(group.getLong(), (((XBAttributeToken) token).getAttribute()).getNaturalLong())));
+                        target.putXBTToken(XBTTypeToken.create(new XBFixedBlockType(group.getLong(), (((XBAttributeToken) token).getAttribute()).getNaturalLong())));
                         expectType = false;
                     } else {
                         group = ((XBAttributeToken) token).getAttribute().convertToNatural();
                     }
                 } else {
-                    target.putXBTToken(new XBTAttributeToken(((XBAttributeToken) token).getAttribute()));
+                    target.putXBTToken(XBTAttributeToken.create(((XBAttributeToken) token).getAttribute()));
                 }
                 break;
             }
 
             case DATA: {
                 if (expectType && group != null) {
-                    target.putXBTToken(new XBTTypeToken(new XBFixedBlockType(group.getLong(), 0)));
+                    target.putXBTToken(XBTTypeToken.create(new XBFixedBlockType(group.getLong(), 0)));
                 }
 
-                target.putXBTToken(new XBTDataToken(((XBDataToken) token).getData()));
+                target.putXBTToken(XBTDataToken.create(((XBDataToken) token).getData()));
                 break;
             }
 
             case END: {
                 if (expectType && group != null) {
-                    target.putXBTToken(new XBTTypeToken(new XBFixedBlockType(group.getLong(), 0)));
+                    target.putXBTToken(XBTTypeToken.create(new XBFixedBlockType(group.getLong(), 0)));
                 }
 
-                target.putXBTToken(new XBTEndToken());
+                target.putXBTToken(XBTEndToken.create());
                 break;
             }
+
+            default:
+                throw new IllegalStateException("Unexpected token type " + token.getTokenType().toString());
         }
     }
 }

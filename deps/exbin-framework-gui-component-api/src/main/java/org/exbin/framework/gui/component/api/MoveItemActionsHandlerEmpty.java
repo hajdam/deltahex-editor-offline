@@ -14,27 +14,43 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along this application.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.exbin.framework.deltahex.panel;
+package org.exbin.framework.gui.component.api;
 
 /**
- * XB Word Wrapping Interface.
+ * Empty class for clipboard handler for visual component / context menu.
  *
- * @version 0.1.0 2016/04/03
+ * @version 0.2.1 2017/02/21
  * @author ExBin Project (http://exbin.org)
  */
-public interface HexAppearancePanelFrame {
+public class MoveItemActionsHandlerEmpty implements MoveItemActionsHandler {
 
-    /**
-     * Returns text word wrapping mode.
-     *
-     * @return wrapping mode
-     */
-    public boolean getWordWrapMode();
+    @Override
+    public void performMoveUp() {
+    }
 
-    /**
-     * Sets text word wrapping mode.
-     *
-     * @param mode word wrapping mode
-     */
-    public void setWordWrapMode(boolean mode);
+    @Override
+    public void performMoveDown() {
+    }
+
+    @Override
+    public void performMoveTop() {
+    }
+
+    @Override
+    public void performMoveBottom() {
+    }
+
+    @Override
+    public boolean isSelection() {
+        return false;
+    }
+
+    @Override
+    public boolean isEditable() {
+        return false;
+    }
+
+    @Override
+    public void setUpdateListener(MoveItemActionsUpdateListener updateListener) {
+    }
 }

@@ -17,6 +17,8 @@
 package org.exbin.xbup.core.parser.token.pull.convert;
 
 import java.io.IOException;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import org.exbin.xbup.core.block.XBFBlockType;
 import org.exbin.xbup.core.parser.XBProcessingException;
 import org.exbin.xbup.core.parser.XBProcessingExceptionType;
@@ -37,21 +39,27 @@ import org.exbin.xbup.core.parser.token.pull.XBTPullProvider;
 /**
  * XBUP level 1 to level 0 pull convertor.
  *
- * @version 0.1.24 2014/08/28
+ * @version 0.2.1 2017/06/05
  * @author ExBin Project (http://exbin.org)
  */
 public class XBTToXBPullConvertor implements XBTPullConsumer, XBPullProvider {
 
+    @Nullable
     private XBTPullProvider pullProvider;
+    @Nullable
     private XBToken buffer;
 
+    public XBTToXBPullConvertor() {
+    }
+
     @Override
-    public void attachXBTPullProvider(XBTPullProvider pullProvider) {
+    public void attachXBTPullProvider(@Nonnull XBTPullProvider pullProvider) {
         this.pullProvider = pullProvider;
         buffer = null;
     }
 
     @Override
+    @Nonnull
     public XBToken pullXBToken() throws XBProcessingException, IOException {
         if (buffer != null) {
             XBToken token = buffer;
@@ -62,25 +70,25 @@ public class XBTToXBPullConvertor implements XBTPullConsumer, XBPullProvider {
         XBTToken token = pullProvider.pullXBTToken();
         switch (token.getTokenType()) {
             case BEGIN:
-                return new XBBeginToken(((XBTBeginToken) token).getTerminationMode());
+                return XBBeginToken.create(((XBTBeginToken) token).getTerminationMode());
 
             case TYPE: {
                 if (((XBTTypeToken) token).getBlockType() instanceof XBFBlockType) {
-                    buffer = new XBAttributeToken(((XBFBlockType) ((XBTTypeToken) token).getBlockType()).getBlockID());
-                    return new XBAttributeToken(((XBFBlockType) ((XBTTypeToken) token).getBlockType()).getGroupID());
+                    buffer = XBAttributeToken.create(((XBFBlockType) ((XBTTypeToken) token).getBlockType()).getBlockID());
+                    return XBAttributeToken.create(((XBFBlockType) ((XBTTypeToken) token).getBlockType()).getGroupID());
                 }
 
                 throw new XBProcessingException("Unexpected block type", XBProcessingExceptionType.BLOCK_TYPE_MISMATCH);
             }
 
             case ATTRIBUTE:
-                return new XBAttributeToken(((XBTAttributeToken) token).getAttribute());
+                return XBAttributeToken.create(((XBTAttributeToken) token).getAttribute());
 
             case DATA:
-                return new XBDataToken(((XBTDataToken) token).getData());
+                return XBDataToken.create(((XBTDataToken) token).getData());
 
             case END:
-                return new XBEndToken();
+                return XBEndToken.create();
 
             default:
                 throw new XBProcessingException("Unexpected token type", XBProcessingExceptionType.UNKNOWN);

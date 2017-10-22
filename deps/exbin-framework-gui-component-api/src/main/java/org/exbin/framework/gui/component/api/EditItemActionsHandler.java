@@ -19,7 +19,7 @@ package org.exbin.framework.gui.component.api;
 /**
  * Interface for clipboard handler for visual component / context menu.
  *
- * @version 0.2.0 2016/01/24
+ * @version 0.2.1 2017/02/21
  * @author ExBin Project (http://exbin.org)
  */
 public interface EditItemActionsHandler {
@@ -27,31 +27,31 @@ public interface EditItemActionsHandler {
     /**
      * Adds new item.
      */
-    public void performAddItem();
+    void performAddItem();
 
     /**
      * Edits currently selected item.
      */
-    public void performEditItem();
+    void performEditItem();
 
     /**
      * Deletes currently selected item(s).
      */
-    public void performDeleteItem();
+    void performDeleteItem();
 
     /**
      * Returns if selection for clipboard operation is available.
      *
      * @return true if selection is available
      */
-    public boolean isSelection();
+    boolean isSelection();
 
     /**
      * Returns true if it is possible to edit currently selected item.
      *
      * @return true if item is editable
      */
-    public boolean isEditable();
+    boolean isEditable();
 
     /**
      * Set listener for actions related updates.

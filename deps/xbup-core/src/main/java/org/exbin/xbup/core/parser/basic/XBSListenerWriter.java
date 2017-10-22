@@ -46,7 +46,7 @@ import org.exbin.xbup.core.util.StreamUtils;
 /**
  * XBUP level 0 listener writer with support for precomputed blocks.
  *
- * @version 0.1.25 2015/08/08
+ * @version 0.2.1 2017/05/19
  * @author ExBin Project (http://exbin.org)
  */
 public class XBSListenerWriter implements Closeable, XBSListener {
@@ -133,7 +133,7 @@ public class XBSListenerWriter implements Closeable, XBSListener {
             attributePartSizeValue = 0;
             dataMode = null;
             if (bufferedFromLevel >= 0) {
-                tokenBuffer.putXBToken(new XBBeginToken(terminationMode));
+                tokenBuffer.putXBToken(XBBeginToken.create(terminationMode));
                 sizeLimits.add(null);
             } else {
                 if (terminationMode == XBBlockTerminationMode.SIZE_SPECIFIED) {
@@ -142,7 +142,7 @@ public class XBSListenerWriter implements Closeable, XBSListener {
                      blockSize.toStreamUB(stream);
                      } else { */
                     bufferedFromLevel = depthLevel;
-                    tokenBuffer.putXBToken(new XBBeginToken(terminationMode));
+                    tokenBuffer.putXBToken(XBBeginToken.create(terminationMode));
                     sizeLimits.add(null);
                     // }
                 } else {
@@ -164,7 +164,7 @@ public class XBSListenerWriter implements Closeable, XBSListener {
         if (parserState == XBParserState.ATTRIBUTE_PART) {
             dataMode = XBBlockDataMode.NODE_BLOCK;
             if (bufferedFromLevel >= 0) {
-                tokenBuffer.putXBToken(new XBAttributeToken(attribute));
+                tokenBuffer.putXBToken(XBAttributeToken.create(attribute));
             } else {
                 int attributeSize = attribute.getSizeUB();
                 shrinkStatus(sizeLimits, attributeSize);
@@ -192,7 +192,7 @@ public class XBSListenerWriter implements Closeable, XBSListener {
 
             dataMode = XBBlockDataMode.DATA_BLOCK;
             if (bufferedFromLevel >= 0) {
-                tokenBuffer.putXBToken(new XBDataToken(data));
+                tokenBuffer.putXBToken(XBDataToken.create(data));
             } else {
                 OutputStream streamWrapper;
                 if (terminationMode == XBBlockTerminationMode.SIZE_SPECIFIED) {
@@ -233,7 +233,7 @@ public class XBSListenerWriter implements Closeable, XBSListener {
             case BLOCK_END:
             case DATA_PART: {
                 if (bufferedFromLevel >= 0) {
-                    tokenBuffer.putXBToken(new XBEndToken());
+                    tokenBuffer.putXBToken(XBEndToken.create());
                     if (bufferedFromLevel == depthLevel) {
                         tokenBuffer.write(stream);
                         bufferedFromLevel = -1;

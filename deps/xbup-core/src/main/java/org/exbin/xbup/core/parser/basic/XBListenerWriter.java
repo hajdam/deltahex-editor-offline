@@ -45,7 +45,7 @@ import org.exbin.xbup.core.util.StreamUtils;
 /**
  * XBUP level 0 listener writer.
  *
- * @version 0.1.25 2015/08/02
+ * @version 0.2.1 2017/05/21
  * @author ExBin Project (http://exbin.org)
  */
 public class XBListenerWriter implements Closeable, XBListener {
@@ -126,11 +126,11 @@ public class XBListenerWriter implements Closeable, XBListener {
             attributePartSizeValue = 0;
             dataMode = null;
             if (bufferedFromLevel >= 0) {
-                tokenBuffer.putXBToken(new XBBeginToken(terminationMode));
+                tokenBuffer.putXBToken(XBBeginToken.create(terminationMode));
             } else {
                 if (terminationMode == XBBlockTerminationMode.SIZE_SPECIFIED) {
                     bufferedFromLevel = depthLevel;
-                    tokenBuffer.putXBToken(new XBBeginToken(terminationMode));
+                    tokenBuffer.putXBToken(XBBeginToken.create(terminationMode));
                 }
             }
 
@@ -148,7 +148,7 @@ public class XBListenerWriter implements Closeable, XBListener {
         if (parserState == XBParserState.ATTRIBUTE_PART) {
             dataMode = XBBlockDataMode.NODE_BLOCK;
             if (bufferedFromLevel >= 0) {
-                tokenBuffer.putXBToken(new XBAttributeToken(attribute));
+                tokenBuffer.putXBToken(XBAttributeToken.create(attribute));
             } else {
                 int attributeSize = attribute.getSizeUB();
                 attributePartSizeValue += attributeSize;
@@ -175,7 +175,7 @@ public class XBListenerWriter implements Closeable, XBListener {
 
             dataMode = XBBlockDataMode.DATA_BLOCK;
             if (bufferedFromLevel >= 0) {
-                tokenBuffer.putXBToken(new XBDataToken(data));
+                tokenBuffer.putXBToken(XBDataToken.create(data));
             } else {
                 OutputStream streamWrapper;
                 if (terminationMode == XBBlockTerminationMode.SIZE_SPECIFIED) {
@@ -213,7 +213,7 @@ public class XBListenerWriter implements Closeable, XBListener {
             case BLOCK_END:
             case DATA_PART: {
                 if (bufferedFromLevel >= 0) {
-                    tokenBuffer.putXBToken(new XBEndToken());
+                    tokenBuffer.putXBToken(XBEndToken.create());
                     if (bufferedFromLevel == depthLevel) {
                         tokenBuffer.write(stream);
                         bufferedFromLevel = -1;

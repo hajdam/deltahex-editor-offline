@@ -50,6 +50,7 @@ import javax.swing.Action;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
+import javax.swing.JScrollPane;
 import org.exbin.deltahex.CaretMovedListener;
 import org.exbin.deltahex.CaretPosition;
 import org.exbin.deltahex.DataChangedListener;
@@ -87,7 +88,7 @@ import org.exbin.xbup.core.type.XBData;
 /**
  * Hexadecimal editor panel.
  *
- * @version 0.2.0 2017/01/07
+ * @version 0.2.1 2017/10/15
  * @author ExBin Project (http://exbin.org)
  */
 public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, ClipboardActionsHandler, TextCharsetApi, TextFontApi, HexSearchPanelApi {
@@ -105,7 +106,10 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
     private boolean deltaMemoryMode = false;
 
     private HexSearchPanel hexSearchPanel;
-    private boolean findTextPanelVisible = false;
+    private boolean hexSearchPanelVisible = false;
+    private ValuesPanel valuesPanel;
+    private JScrollPane valuesPanelScrollPane;
+    private boolean valuesPanelVisible = false;
     private Action goToLineAction = null;
     private Action copyAsCode = null;
     private Action pasteFromCode = null;
@@ -196,6 +200,12 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
                 hideSearchPanel();
             }
         });
+        
+        valuesPanel = new ValuesPanel();
+        valuesPanel.setCodeArea(codeArea, undoHandler);
+        valuesPanelScrollPane = new JScrollPane(valuesPanel);
+        valuesPanelScrollPane.setBorder(null);
+        showValuesPanel();
     }
 
     public void setApplication(XBApplication application) {
@@ -208,23 +218,48 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
     }
 
     public void showSearchPanel(boolean replace) {
-        if (!findTextPanelVisible) {
+        if (!hexSearchPanelVisible) {
             add(hexSearchPanel, BorderLayout.SOUTH);
             revalidate();
-            findTextPanelVisible = true;
+            hexSearchPanelVisible = true;
             hexSearchPanel.requestSearchFocus();
         }
         hexSearchPanel.switchReplaceMode(replace);
     }
 
     public void hideSearchPanel() {
-        if (findTextPanelVisible) {
+        if (hexSearchPanelVisible) {
             hexSearchPanel.cancelSearch();
             hexSearchPanel.clearSearch();
             HexPanel.this.remove(hexSearchPanel);
             HexPanel.this.revalidate();
-            findTextPanelVisible = false;
+            hexSearchPanelVisible = false;
         }
+    }
+    
+    @Override
+    public void showValuesPanel() {
+        if (!valuesPanelVisible) {
+            add(valuesPanelScrollPane, BorderLayout.EAST);
+            revalidate();
+            valuesPanelVisible = true;
+            valuesPanel.enableUpdate();
+        }
+    }
+
+    @Override
+    public void hideValuesPanel() {
+        if (valuesPanelVisible) {
+            valuesPanel.disableUpdate();
+            HexPanel.this.remove(valuesPanelScrollPane);
+            HexPanel.this.revalidate();
+            valuesPanelVisible = false;
+        }
+    }
+
+    @Override
+    public boolean isValuesPanelVisible() {
+        return valuesPanelVisible;
     }
 
     public CodeArea getCodeArea() {
@@ -420,8 +455,8 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
             while (matchCharLength < findText.length()) {
                 long searchPosition = position + matchLength;
                 int bytesToUse = maxBytesPerChar;
-                if (position + bytesToUse > dataSize) {
-                    bytesToUse = (int) (dataSize - position);
+                if (searchPosition + bytesToUse > dataSize) {
+                    bytesToUse = (int) (dataSize - searchPosition);
                 }
                 data.copyToArray(searchPosition, charData, 0, bytesToUse);
                 char singleChar = new String(charData, charset).charAt(0);
@@ -953,7 +988,9 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
     private void updateCurrentDocumentSize() {
         long dataSize = codeArea.getData().getDataSize();
         long difference = dataSize - documentOriginalSize;
-        hexStatus.setCurrentDocumentSize(dataSize + " (" + (difference > 0 ? "+" + difference : difference) + ")");
+        if (hexStatus != null) {
+            hexStatus.setCurrentDocumentSize(dataSize + " (" + (difference > 0 ? "+" + difference : difference) + ")");
+        }
     }
 
     public void setDeltaMemoryMode(boolean deltaMemoryMode) {
@@ -1019,11 +1056,15 @@ public class HexPanel extends javax.swing.JPanel implements HexEditorProvider, C
             clipboardActionsUpdateListener.stateChanged();
         }
 
-        hexStatus.setEditationMode(codeArea.getEditationMode());
+        if (hexStatus != null) {
+            hexStatus.setEditationMode(codeArea.getEditationMode());
+        }
         CaretPosition caretPosition = codeArea.getCaretPosition();
         String position = String.valueOf(caretPosition.getDataPosition());
         position += ":" + caretPosition.getCodeOffset();
-        hexStatus.setCursorPosition(position);
+        if (hexStatus != null) {
+            hexStatus.setCursorPosition(position);
+        }
         encodingStatus.setEncoding(codeArea.getCharset().name());
     }
 

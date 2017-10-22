@@ -22,6 +22,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import org.exbin.xbup.core.block.XBBasicBlockType;
 import org.exbin.xbup.core.block.XBBlockTerminationMode;
 import org.exbin.xbup.core.parser.XBProcessingException;
@@ -45,29 +47,27 @@ import org.exbin.xbup.core.ubnumber.type.UBNat32;
  */
 public class XBTCompactingEventFilter implements XBTEventFilter {
 
+    @Nonnull
     private XBTEventListener eventListener;
 
     private boolean unknownMode = false;
     private boolean emptyDataMode = true;
     private int zeroAttributes = 0;
     private final List<XBBlockTerminationMode> emptyNodes = new ArrayList<>();
-    private XBBlockTerminationMode blockMode;
+    @Nullable
+    private XBBlockTerminationMode blockMode = null;
 
-    public XBTCompactingEventFilter(XBTEventListener eventListener) {
-        attachListener(eventListener);
-    }
-
-    @Override
-    public void attachXBTEventListener(XBTEventListener eventListener) {
-        attachListener(eventListener);
-    }
-
-    private void attachListener(XBTEventListener eventListener) {
+    public XBTCompactingEventFilter(@Nonnull XBTEventListener eventListener) {
         this.eventListener = eventListener;
     }
 
     @Override
-    public void putXBTToken(XBTToken token) throws XBProcessingException, IOException {
+    public void attachXBTEventListener(@Nonnull XBTEventListener eventListener) {
+        this.eventListener = eventListener;
+    }
+
+    @Override
+    public void putXBTToken(@Nonnull XBTToken token) throws XBProcessingException, IOException {
         switch (token.getTokenType()) {
             case BEGIN: {
                 blockMode = ((XBTBeginToken) token).getTerminationMode();
@@ -78,7 +78,7 @@ public class XBTCompactingEventFilter implements XBTEventFilter {
             case TYPE: {
                 flushEmptyNodes();
                 if (emptyDataMode) {
-                    eventListener.putXBTToken(new XBTBeginToken(blockMode));
+                    eventListener.putXBTToken(XBTBeginToken.create(blockMode));
                     emptyDataMode = false;
                 }
                 unknownMode = (((XBTTypeToken) token).getBlockType().getAsBasicType() == XBBasicBlockType.UNKNOWN_BLOCK);
@@ -89,7 +89,7 @@ public class XBTCompactingEventFilter implements XBTEventFilter {
             case ATTRIBUTE: {
                 flushEmptyNodes();
                 if (emptyDataMode) {
-                    eventListener.putXBTToken(new XBTBeginToken(blockMode));
+                    eventListener.putXBTToken(XBTBeginToken.create(blockMode));
                     emptyDataMode = false;
                 }
 
@@ -114,7 +114,7 @@ public class XBTCompactingEventFilter implements XBTEventFilter {
                     flushEmptyNodes();
                 }
 
-                eventListener.putXBTToken(new XBTBeginToken(blockMode));
+                eventListener.putXBTToken(XBTBeginToken.create(blockMode));
                 eventListener.putXBTToken(token);
                 break;
             }
@@ -133,7 +133,7 @@ public class XBTCompactingEventFilter implements XBTEventFilter {
 
     private void flushAttributes() throws IOException, XBProcessingException {
         for (int i = 0; i < zeroAttributes; i++) {
-            eventListener.putXBTToken(new XBTAttributeToken(new UBNat32(0)));
+            eventListener.putXBTToken(XBTAttributeToken.create(new UBNat32(0)));
         }
         zeroAttributes = 0;
     }
@@ -141,9 +141,9 @@ public class XBTCompactingEventFilter implements XBTEventFilter {
     private void flushEmptyNodes() {
         try {
             for (XBBlockTerminationMode nodeMode : emptyNodes) {
-                eventListener.putXBTToken(new XBTBeginToken(nodeMode));
-                eventListener.putXBTToken(new XBTDataToken(new ByteArrayInputStream(new byte[0])));
-                eventListener.putXBTToken(new XBTEndToken());
+                eventListener.putXBTToken(XBTBeginToken.create(nodeMode));
+                eventListener.putXBTToken(XBTDataToken.create(new ByteArrayInputStream(new byte[0])));
+                eventListener.putXBTToken(XBTEndToken.create());
             }
         } catch (XBProcessingException | IOException ex) {
             Logger.getLogger(XBTCompactingEventFilter.class.getName()).log(Level.SEVERE, null, ex);

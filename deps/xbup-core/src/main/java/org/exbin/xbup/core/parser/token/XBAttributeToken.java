@@ -16,37 +16,97 @@
  */
 package org.exbin.xbup.core.parser.token;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import org.exbin.xbup.core.ubnumber.type.UBNat32;
+
 /**
  * XBUP protocol level 0 attribute token.
  *
  * This class carry single UBNatural value.
  *
- * @version 0.1.24 2015/02/09
+ * @version 0.2.1 2017/05/22
  * @author ExBin Project (http://exbin.org)
  */
-public class XBAttributeToken extends XBToken {
+public abstract class XBAttributeToken implements XBToken {
 
-    private final XBAttribute attribute;
-
-    public XBAttributeToken(XBAttribute attribute) {
-        this.attribute = attribute;
-    }
-
-    public XBAttribute getAttribute() {
-        return attribute;
-    }
+    /**
+     * Return attribute value.
+     *
+     * @return attribute value
+     */
+    @Nonnull
+    public abstract XBAttribute getAttribute();
 
     /**
      * Returns true if this is attribute is zero.
      *
      * @return true if attribute is zero
      */
-    public boolean isZero() {
-        return attribute == null || attribute.isNaturalZero();
-    }
+    public abstract boolean isZero();
 
     @Override
+    @Nonnull
     public XBTokenType getTokenType() {
         return XBTokenType.ATTRIBUTE;
+    }
+
+    @Nonnull
+    public static XBAttributeToken create(@Nonnull XBAttribute attribute) {
+        return new XBAttributeTokenImpl(attribute);
+    }
+
+    private static class XBAttributeTokenImpl extends XBAttributeToken {
+
+        @Nonnull
+        private final XBAttribute attribute;
+
+        private XBAttributeTokenImpl(@Nonnull XBAttribute attribute) {
+            this.attribute = attribute;
+        }
+
+        @Nonnull
+        @Override
+        public XBAttribute getAttribute() {
+            return attribute;
+        }
+
+        /**
+         * Returns true if this is attribute is zero.
+         *
+         * @return true if attribute is zero
+         */
+        @Override
+        public boolean isZero() {
+            return attribute.isNaturalZero();
+        }
+    }
+
+    @Nullable
+    private static XBZeroAttributeToken cachedZeroToken = null;
+
+    @Nonnull
+    public static XBZeroAttributeToken createZeroToken() {
+        if (cachedZeroToken == null) {
+            cachedZeroToken = new XBZeroAttributeToken();
+        }
+
+        return cachedZeroToken;
+    }
+
+    private static class XBZeroAttributeToken extends XBAttributeToken {
+
+        XBZeroAttributeToken() {
+        }
+
+        @Override
+        public XBAttribute getAttribute() {
+            return new UBNat32();
+        }
+
+        @Override
+        public boolean isZero() {
+            return true;
+        }
     }
 }

@@ -18,6 +18,8 @@ package org.exbin.xbup.core.parser.token.pull.convert;
 
 import java.io.IOException;
 import java.io.InputStream;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import org.exbin.xbup.core.block.XBBlockTerminationMode;
 import org.exbin.xbup.core.parser.XBProcessingException;
 import org.exbin.xbup.core.parser.basic.XBProvider;
@@ -35,44 +37,47 @@ import org.exbin.xbup.core.ubnumber.UBNatural;
 /**
  * Provider To pull provider convertor for XBUP protocol level 0.
  *
- * @version 0.1.24 2014/11/27
+ * @version 0.2.1 2017/06/05
  * @author ExBin Project (http://exbin.org)
  */
 public class XBProviderToPullProvider implements XBPullProvider {
 
+    @Nonnull
     private final XBProvider provider;
+    @Nullable
     private XBToken token;
 
-    public XBProviderToPullProvider(XBProvider provider) {
+    public XBProviderToPullProvider(@Nonnull XBProvider provider) {
         this.provider = provider;
     }
 
     @Override
+    @Nonnull
     public XBToken pullXBToken() throws XBProcessingException, IOException {
         provider.produceXB(new XBSListener() {
             @Override
             public void beginXB(XBBlockTerminationMode terminationMode) throws XBProcessingException, IOException {
-                token = new XBBeginToken(terminationMode);
+                token = XBBeginToken.create(terminationMode);
             }
 
             @Override
             public void beginXB(XBBlockTerminationMode terminationMode, UBNatural blockSize) throws XBProcessingException, IOException {
-                token = new XBSBeginToken(terminationMode, blockSize);
+                token = XBSBeginToken.create(terminationMode, blockSize);
             }
 
             @Override
             public void attribXB(XBAttribute value) throws XBProcessingException, IOException {
-                token = new XBAttributeToken(value);
+                token = XBAttributeToken.create(value);
             }
 
             @Override
             public void dataXB(InputStream data) throws XBProcessingException, IOException {
-                token = new XBDataToken(data);
+                token = XBDataToken.create(data);
             }
 
             @Override
             public void endXB() throws XBProcessingException, IOException {
-                token = new XBEndToken();
+                token = XBEndToken.create();
             }
         });
 

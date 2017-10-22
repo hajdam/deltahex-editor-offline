@@ -16,20 +16,23 @@
  */
 package org.exbin.xbup.core.parser.token;
 
+import javax.annotation.Nonnull;
+
 /**
- * Abstract class for typed tokens.
+ * Interface for typed token.
  *
  * Token provides data object and has single type as a member of enumeration.
  *
- * @version 0.1.22 2013/04/05
+ * @version 0.2.1 2017/05/22
  * @author ExBin Project (http://exbin.org)
  */
-public abstract class TypedToken {
+public interface TypedToken {
 
     /**
      * Returns token type.
      *
      * @return the token type class.
      */
-    public abstract Enum getTokenType();
+    @Nonnull
+    Enum getTokenType();
 }

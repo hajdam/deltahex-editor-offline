@@ -17,13 +17,15 @@
 package org.exbin.xbup.core.block;
 
 import java.io.InputStream;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import org.exbin.utils.binary_data.BinaryData;
 import org.exbin.xbup.core.parser.token.XBAttribute;
 
 /**
  * Interface for read access to XBUP level 0 block.
  *
- * @version 0.2.0 2015/09/19
+ * @version 0.2.1 2017/05/10
  * @author ExBin Project (http://exbin.org)
  */
 public interface XBBlock {
@@ -33,14 +35,16 @@ public interface XBBlock {
      *
      * @return Parent block.
      */
-    public XBBlock getParent();
+    @Nullable
+    XBBlock getParent();
 
     /**
      * Returns mode whether this block is data block.
      *
      * @return data mode
      */
-    public XBBlockDataMode getDataMode();
+    @Nonnull
+    XBBlockDataMode getDataMode();
 
     /**
      * Returns whether this block is using sequence of children ended with
@@ -48,14 +52,16 @@ public interface XBBlock {
      *
      * @return termination mode
      */
-    public XBBlockTerminationMode getTerminationMode();
+    @Nonnull
+    XBBlockTerminationMode getTerminationMode();
 
     /**
      * Gets array of attributes in order of appearance.
      *
      * @return array of attributes
      */
-    public XBAttribute[] getAttributes();
+    @Nullable
+    XBAttribute[] getAttributes();
 
     /**
      * Gets attribute of given index / order.
@@ -63,21 +69,23 @@ public interface XBBlock {
      * @param attributeIndex index/order of attribute
      * @return attribute value
      */
-    public XBAttribute getAttributeAt(int attributeIndex);
+    @Nullable
+    XBAttribute getAttributeAt(int attributeIndex);
 
     /**
      * Gets count of attributes.
      *
      * @return count of attributes
      */
-    public int getAttributesCount();
+    int getAttributesCount();
 
     /**
      * Gets array of all children blocks.
      *
      * @return list of child blocks
      */
-    public XBBlock[] getChildren();
+    @Nullable
+    XBBlock[] getChildren();
 
     /**
      * Gets child block of given index.
@@ -85,26 +93,29 @@ public interface XBBlock {
      * @param childIndex index of child block
      * @return child block
      */
-    public XBBlock getChildAt(int childIndex);
+    @Nullable
+    XBBlock getChildAt(int childIndex);
 
     /**
      * Gets count of children.
      *
      * @return count of children
      */
-    public int getChildrenCount();
+    int getChildrenCount();
 
     /**
      * Gets block data.
      *
      * @return block data or null
      */
-    public InputStream getData();
+    @Nullable
+    InputStream getData();
 
     /**
      * Gets block data.
      *
      * @return block data or null
      */
-    public BinaryData getBlockData();
+    @Nullable
+    BinaryData getBlockData();
 }

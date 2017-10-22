@@ -18,6 +18,8 @@ package org.exbin.xbup.core.parser.token.convert;
 
 import java.io.IOException;
 import java.io.InputStream;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import org.exbin.xbup.core.block.XBBlockTerminationMode;
 import org.exbin.xbup.core.block.XBBlockType;
 import org.exbin.xbup.core.parser.XBProcessingException;
@@ -37,49 +39,55 @@ import org.exbin.xbup.core.ubnumber.UBNatural;
  * XBUP level 1 listener to token convertor and static method for reverse
  * operation.
  *
- * @version 0.1.24 2014/11/27
+ * @version 0.2.1 2017/06/05
  * @author ExBin Project (http://exbin.org)
  */
 public class XBTListenerToToken implements XBTListener, XBTSListener {
 
+    @Nullable
     private XBTToken token;
 
     public XBTListenerToToken() {
         token = null;
     }
 
+    @Nullable
     public XBTToken getToken() {
         return token;
     }
 
-    @Override
-    public void beginXBT(XBBlockTerminationMode terminationMode) throws XBProcessingException, IOException {
-        token = new XBTBeginToken(terminationMode);
+    public void setToken(@Nullable XBTToken token) {
+        this.token = token;
     }
 
     @Override
-    public void beginXBT(XBBlockTerminationMode terminationMode, UBNatural blockSize) throws XBProcessingException, IOException {
-        token = new XBTSBeginToken(terminationMode, blockSize);
+    public void beginXBT(@Nonnull XBBlockTerminationMode terminationMode) throws XBProcessingException, IOException {
+        token = XBTBeginToken.create(terminationMode);
     }
 
     @Override
-    public void typeXBT(XBBlockType blockType) throws XBProcessingException, IOException {
-        token = new XBTTypeToken(blockType);
+    public void beginXBT(@Nonnull XBBlockTerminationMode terminationMode, @Nullable UBNatural blockSize) throws XBProcessingException, IOException {
+        token = XBTSBeginToken.create(terminationMode, blockSize);
     }
 
     @Override
-    public void attribXBT(XBAttribute value) throws XBProcessingException, IOException {
-        token = new XBTAttributeToken(value);
+    public void typeXBT(@Nonnull XBBlockType blockType) throws XBProcessingException, IOException {
+        token = XBTTypeToken.create(blockType);
     }
 
     @Override
-    public void dataXBT(InputStream data) throws XBProcessingException, IOException {
-        token = new XBTDataToken(data);
+    public void attribXBT(@Nonnull XBAttribute value) throws XBProcessingException, IOException {
+        token = XBTAttributeToken.create(value);
+    }
+
+    @Override
+    public void dataXBT(@Nonnull InputStream data) throws XBProcessingException, IOException {
+        token = XBTDataToken.create(data);
     }
 
     @Override
     public void endXBT() throws XBProcessingException, IOException {
-        token = new XBTEndToken();
+        token = XBTEndToken.create();
     }
 
     /**
@@ -90,7 +98,7 @@ public class XBTListenerToToken implements XBTListener, XBTSListener {
      * @throws XBProcessingException if processing error
      * @throws java.io.IOException if input/output error
      */
-    public static void tokenToListener(XBTToken token, XBTListener listener) throws XBProcessingException, IOException {
+    public static void tokenToListener(@Nonnull XBTToken token, @Nonnull XBTListener listener) throws XBProcessingException, IOException {
         switch (token.getTokenType()) {
             case BEGIN: {
                 if ((token instanceof XBTSBeginToken) && (listener instanceof XBTSListener)) {

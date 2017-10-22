@@ -17,6 +17,7 @@
 package org.exbin.xbup.core.parser.token.event.convert;
 
 import java.io.IOException;
+import javax.annotation.Nonnull;
 import org.exbin.xbup.core.block.XBFixedBlockType;
 import org.exbin.xbup.core.parser.XBProcessingException;
 import org.exbin.xbup.core.parser.token.XBAttributeToken;
@@ -35,53 +36,53 @@ import org.exbin.xbup.core.parser.token.event.XBTEventProducer;
 /**
  * XBUP level 0 to level 1 event convertor which introduces unknown type.
  *
- * @version 0.1.24 2014/11/27
+ * @version 0.2.1 2017/06/05
  * @author ExBin Project (http://exbin.org)
  */
 public class XBToXBTEventWrapper implements XBEventListener, XBTEventProducer {
 
+    @Nonnull
     private XBTEventListener eventListener;
     private final XBFixedBlockType unknownBlockType = new XBFixedBlockType();
     private boolean typeSent = false;
 
-    public XBToXBTEventWrapper(XBTEventListener eventListener) {
+    public XBToXBTEventWrapper(@Nonnull XBTEventListener eventListener) {
         this.eventListener = eventListener;
     }
 
     @Override
-    public void attachXBTEventListener(XBTEventListener eventListener) {
+    public void attachXBTEventListener(@Nonnull XBTEventListener eventListener) {
         this.eventListener = eventListener;
         typeSent = false;
     }
 
     @Override
-    public void putXBToken(XBToken token) throws XBProcessingException, IOException {
+    public void putXBToken(@Nonnull XBToken token) throws XBProcessingException, IOException {
         switch (token.getTokenType()) {
             case BEGIN: {
                 typeSent = false;
-                eventListener.putXBTToken(new XBTBeginToken(((XBBeginToken) token).getTerminationMode()));
+                eventListener.putXBTToken(XBTBeginToken.create(((XBBeginToken) token).getTerminationMode()));
                 break;
             }
             case ATTRIBUTE: {
                 if (!typeSent) {
-                    eventListener.putXBTToken(new XBTTypeToken(unknownBlockType));
+                    eventListener.putXBTToken(XBTTypeToken.create(unknownBlockType));
                     typeSent = true;
                 }
 
-                eventListener.putXBTToken(new XBTAttributeToken(((XBAttributeToken) token).getAttribute()));
+                eventListener.putXBTToken(XBTAttributeToken.create(((XBAttributeToken) token).getAttribute()));
                 break;
             }
             case DATA: {
-                eventListener.putXBTToken(new XBTDataToken(((XBDataToken) token).getData()));
+                eventListener.putXBTToken(XBTDataToken.create(((XBDataToken) token).getData()));
                 break;
             }
             case END: {
-                eventListener.putXBTToken(new XBTEndToken());
+                eventListener.putXBTToken(XBTEndToken.create());
                 break;
             }
-            default: {
-                throw new IllegalStateException();
-            }
+            default:
+                throw new IllegalStateException("Unexpected token type " + token.getTokenType().toString());
         }
     }
 }

@@ -16,28 +16,44 @@
  */
 package org.exbin.xbup.core.parser.token;
 
+import javax.annotation.Nonnull;
 import org.exbin.xbup.core.block.XBBlockType;
 
 /**
  * XBUP protocol level 1 block type token.
  *
- * @version 0.1.23 2013/11/01
+ * @version 0.2.1 2017/05/22
  * @author ExBin Project (http://exbin.org)
  */
-public class XBTTypeToken extends XBTToken {
+public abstract class XBTTypeToken implements XBTToken {
 
-    private final XBBlockType blockType;
-
-    public XBTTypeToken(XBBlockType blockType) {
-        this.blockType = blockType;
-    }
-
-    public XBBlockType getBlockType() {
-        return blockType;
-    }
+    @Nonnull
+    public abstract XBBlockType getBlockType();
 
     @Override
+    @Nonnull
     public XBTTokenType getTokenType() {
         return XBTTokenType.TYPE;
+    }
+
+    @Nonnull
+    public static XBTTypeToken create(@Nonnull XBBlockType blockType) {
+        return new XBTTypeTokenImpl(blockType);
+    }
+
+    private static class XBTTypeTokenImpl extends XBTTypeToken {
+
+        @Nonnull
+        private final XBBlockType blockType;
+
+        private XBTTypeTokenImpl(@Nonnull XBBlockType blockType) {
+            this.blockType = blockType;
+        }
+
+        @Nonnull
+        @Override
+        public XBBlockType getBlockType() {
+            return blockType;
+        }
     }
 }

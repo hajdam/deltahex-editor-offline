@@ -21,6 +21,8 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import org.exbin.utils.binary_data.BinaryData;
 import org.exbin.xbup.core.parser.token.XBAttribute;
 import org.exbin.xbup.core.type.XBData;
@@ -28,23 +30,29 @@ import org.exbin.xbup.core.type.XBData;
 /**
  * Basic plain implementation of XBEditableBlock interface.
  *
- * @version 0.2.0 2016/05/24
+ * @version 0.2.1 2017/05/13
  * @author ExBin Project (http://exbin.org)
  */
 public class XBDefaultEditableBlock implements XBEditableBlock {
 
+    @Nullable
     private XBBlock parent;
+    @Nonnull
     private XBBlockDataMode dataMode;
+    @Nonnull
     private XBBlockTerminationMode terminationMode;
-    private List<XBAttribute> attributes = new ArrayList<>();
-    private List<XBBlock> children = new ArrayList<>();
+    @Nullable
+    private List<XBAttribute> attributes;
+    @Nullable
+    private List<XBBlock> children;
+    @Nullable
     private BinaryData data;
 
     /**
      * Creates new instance of XBDefaultBlock as an empty data block.
      */
     public XBDefaultEditableBlock() {
-        this(null, XBBlockTerminationMode.SIZE_SPECIFIED, new XBData());
+        this(null, XBBlockTerminationMode.SIZE_SPECIFIED, null);
     }
 
     /**
@@ -54,11 +62,11 @@ public class XBDefaultEditableBlock implements XBEditableBlock {
      * @param terminationMode termination mode
      * @param data block data
      */
-    public XBDefaultEditableBlock(XBBlock parent, XBBlockTerminationMode terminationMode, BinaryData data) {
+    public XBDefaultEditableBlock(@Nullable XBBlock parent, @Nonnull XBBlockTerminationMode terminationMode, @Nullable BinaryData data) {
         dataMode = XBBlockDataMode.DATA_BLOCK;
         this.parent = parent;
         this.terminationMode = terminationMode;
-        this.data = data == null ? new XBData() : data;
+        this.data = data;
     }
 
     /**
@@ -68,7 +76,7 @@ public class XBDefaultEditableBlock implements XBEditableBlock {
      * @param terminationMode termination mode
      * @param data block data
      */
-    public XBDefaultEditableBlock(XBBlockTerminationMode terminationMode, BinaryData data) {
+    public XBDefaultEditableBlock(@Nullable XBBlockTerminationMode terminationMode, @Nullable BinaryData data) {
         this(null, terminationMode, data);
     }
 
@@ -80,19 +88,23 @@ public class XBDefaultEditableBlock implements XBEditableBlock {
      * @param attributes attributes
      * @param children children blocks
      */
-    public XBDefaultEditableBlock(XBBlock parent, XBBlockTerminationMode terminationMode, XBAttribute[] attributes, XBBlock[] children) {
+    public XBDefaultEditableBlock(@Nullable XBBlock parent, @Nullable XBBlockTerminationMode terminationMode, @Nullable XBAttribute[] attributes, @Nullable XBBlock[] children) {
         dataMode = XBBlockDataMode.NODE_BLOCK;
         this.parent = parent;
         this.terminationMode = terminationMode == null ? XBBlockTerminationMode.SIZE_SPECIFIED : terminationMode;
-        this.attributes = new ArrayList<>();
+
         if (attributes != null) {
-            this.attributes.addAll(Arrays.asList(attributes));
+            List<XBAttribute> blockAttributes = new ArrayList<>();
+            blockAttributes.addAll(Arrays.asList(attributes));
+            this.attributes = blockAttributes;
         }
-        this.children = new ArrayList<>();
+
         if (children != null) {
-            this.children.addAll(Arrays.asList(children));
+            List<XBBlock> blockChildren = new ArrayList<>();
+            blockChildren.addAll(Arrays.asList(children));
+            this.children = blockChildren;
         }
-        data = null;
+
         if (children != null) {
             attachChildren(children);
         }
@@ -106,11 +118,11 @@ public class XBDefaultEditableBlock implements XBEditableBlock {
      * @param attributes attributes
      * @param children children blocks
      */
-    public XBDefaultEditableBlock(XBBlockTerminationMode terminationMode, XBAttribute[] attributes, XBBlock[] children) {
+    public XBDefaultEditableBlock(@Nonnull XBBlockTerminationMode terminationMode, @Nullable XBAttribute[] attributes, @Nullable XBBlock[] children) {
         this(null, terminationMode, attributes, children);
     }
 
-    private void attachChildren(XBBlock[] children) {
+    private void attachChildren(@Nonnull XBBlock[] children) {
         for (XBBlock child : children) {
             if (child instanceof XBDefaultEditableBlock) {
                 ((XBDefaultEditableBlock) child).setParent(this);
@@ -120,6 +132,7 @@ public class XBDefaultEditableBlock implements XBEditableBlock {
         }
     }
 
+    @Nullable
     @Override
     public XBBlock getParent() {
         return parent;
@@ -132,26 +145,30 @@ public class XBDefaultEditableBlock implements XBEditableBlock {
      * @param parent parent block
      */
     @Override
-    public void setParent(XBBlock parent) {
+    public void setParent(@Nullable XBBlock parent) {
         this.parent = parent;
     }
 
+    @Nonnull
     @Override
     public XBBlockDataMode getDataMode() {
         return dataMode;
     }
 
+    @Nonnull
     @Override
     public XBBlockTerminationMode getTerminationMode() {
         return terminationMode;
     }
 
     @Override
+    @Nullable
     public XBAttribute[] getAttributes() {
         return attributes.toArray(new XBAttribute[0]);
     }
 
     @Override
+    @Nullable
     public XBAttribute getAttributeAt(int attributeIndex) {
         return attributeIndex < attributes.size() ? attributes.get(attributeIndex) : null;
     }
@@ -162,21 +179,24 @@ public class XBDefaultEditableBlock implements XBEditableBlock {
     }
 
     @Override
+    @Nullable
     public XBBlock[] getChildren() {
-        return children.toArray(new XBBlock[0]);
+        return children == null ? null : children.toArray(new XBBlock[0]);
     }
 
     @Override
+    @Nullable
     public XBBlock getChildAt(int childIndex) {
         return childIndex < children.size() ? children.get(childIndex) : null;
     }
 
     @Override
     public int getChildrenCount() {
-        return children.size();
+        return children != null ? children.size() : 0;
     }
 
     @Override
+    @Nullable
     public InputStream getData() {
         return data == null ? null : data.getDataInputStream();
     }
@@ -198,7 +218,7 @@ public class XBDefaultEditableBlock implements XBEditableBlock {
      * @param block target block
      * @return position index
      */
-    public static int getBlockIndex(XBBlock block) {
+    public static int getBlockIndex(@Nullable XBBlock block) {
         if (block == null) {
             return -1;
         }
@@ -228,7 +248,7 @@ public class XBDefaultEditableBlock implements XBEditableBlock {
      * @param block target block
      * @return position index
      */
-    public static int getChildIndexOf(XBBlock parent, XBBlock block) {
+    public static int getChildIndexOf(@Nullable XBBlock parent, @Nullable XBBlock block) {
         if (block == null || parent == null) {
             return -1;
         }
@@ -247,18 +267,23 @@ public class XBDefaultEditableBlock implements XBEditableBlock {
     }
 
     @Override
-    public void setTerminationMode(XBBlockTerminationMode terminationMode) {
+    public void setTerminationMode(@Nonnull XBBlockTerminationMode terminationMode) {
         this.terminationMode = terminationMode;
     }
 
     @Override
-    public void setDataMode(XBBlockDataMode dataMode) {
+    public void setDataMode(@Nullable XBBlockDataMode dataMode) {
         this.dataMode = dataMode;
     }
 
     @Override
-    public void setAttributes(XBAttribute[] attributes) {
-        this.attributes.clear();
+    public void setAttributes(@Nullable XBAttribute[] attributes) {
+        if (this.attributes == null) {
+            this.attributes = new ArrayList<>();
+        } else {
+            this.attributes.clear();
+        }
+
         if (attributes != null) {
             this.attributes.addAll(Arrays.asList(attributes));
         }
@@ -286,8 +311,14 @@ public class XBDefaultEditableBlock implements XBEditableBlock {
 
     @Override
     public void setChildren(XBBlock[] blocks) {
-        this.children.clear();
-        this.children.addAll(Arrays.asList(blocks));
+        List<XBBlock> resultChildren = this.children;
+        if (resultChildren == null) {
+            resultChildren = new ArrayList<>();
+        } else {
+            resultChildren.clear();
+        }
+        resultChildren.addAll(Arrays.asList(blocks));
+        this.children = resultChildren;
     }
 
     @Override

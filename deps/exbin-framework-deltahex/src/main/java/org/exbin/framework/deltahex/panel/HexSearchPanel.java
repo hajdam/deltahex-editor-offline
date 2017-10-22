@@ -110,10 +110,15 @@ public class HexSearchPanel extends javax.swing.JPanel {
 
         findComboBoxEditorComponent = new HexSearchComboBoxPanel();
         findComboBox.setRenderer(new ListCellRenderer<SearchCondition>() {
+            private final JPanel panel = new JPanel();
             private final DefaultListCellRenderer listCellRenderer = new DefaultListCellRenderer();
 
             @Override
             public Component getListCellRendererComponent(JList<? extends SearchCondition> list, SearchCondition value, int index, boolean isSelected, boolean cellHasFocus) {
+                if (value == null) {
+                    return panel;
+                }
+
                 if (value.getSearchMode() == SearchCondition.SearchMode.TEXT) {
                     return listCellRenderer.getListCellRendererComponent(list, value.getSearchText(), index, isSelected, cellHasFocus);
                 } else {
@@ -125,7 +130,7 @@ public class HexSearchPanel extends javax.swing.JPanel {
                     } else {
                         backgroundColor = list.getBackground();
                     }
-                    ColorsGroup mainColors = hexadecimalRenderer.getMainColors();
+                    ColorsGroup mainColors = new ColorsGroup(hexadecimalRenderer.getMainColors());
                     mainColors.setBothBackgroundColors(backgroundColor);
                     hexadecimalRenderer.setMainColors(mainColors);
                     return hexadecimalRenderer;
@@ -190,10 +195,15 @@ public class HexSearchPanel extends javax.swing.JPanel {
 
         replaceComboBoxEditorComponent = new HexSearchComboBoxPanel();
         replaceComboBox.setRenderer(new ListCellRenderer<SearchCondition>() {
+            private final JPanel panel = new JPanel();
             private final DefaultListCellRenderer listCellRenderer = new DefaultListCellRenderer();
 
             @Override
             public Component getListCellRendererComponent(JList<? extends SearchCondition> list, SearchCondition value, int index, boolean isSelected, boolean cellHasFocus) {
+                if (value == null) {
+                    return panel;
+                }
+
                 if (value.getSearchMode() == SearchCondition.SearchMode.TEXT) {
                     return listCellRenderer.getListCellRendererComponent(list, value.getSearchText(), index, isSelected, cellHasFocus);
                 } else {
@@ -205,7 +215,7 @@ public class HexSearchPanel extends javax.swing.JPanel {
                     } else {
                         backgroundColor = list.getBackground();
                     }
-                    ColorsGroup mainColors = hexadecimalRenderer.getMainColors();
+                    ColorsGroup mainColors = new ColorsGroup(hexadecimalRenderer.getMainColors());
                     mainColors.setBothBackgroundColors(backgroundColor);
                     hexadecimalRenderer.setMainColors(mainColors);
                     return hexadecimalRenderer;
@@ -715,6 +725,40 @@ public class HexSearchPanel extends javax.swing.JPanel {
     private void replaceAllButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_replaceAllButtonActionPerformed
         performReplaceAll();
     }//GEN-LAST:event_replaceAllButtonActionPerformed
+
+    /**
+     * Test method for this panel.
+     *
+     * @param args the command line arguments
+     */
+    public static void main(String args[]) {
+        WindowUtils.invokeDialog(new HexSearchPanel(new HexSearchPanelApi() {
+            @Override
+            public void performFind(SearchParameters dialogSearchParameters) {
+                throw new UnsupportedOperationException("Not supported yet.");
+            }
+
+            @Override
+            public void setMatchPosition(int matchPosition) {
+                throw new UnsupportedOperationException("Not supported yet.");
+            }
+
+            @Override
+            public void updatePosition() {
+                throw new UnsupportedOperationException("Not supported yet.");
+            }
+
+            @Override
+            public void performReplace(SearchParameters searchParameters, ReplaceParameters replaceParameters) {
+                throw new UnsupportedOperationException("Not supported yet.");
+            }
+
+            @Override
+            public void clearMatches() {
+                throw new UnsupportedOperationException("Not supported yet.");
+            }
+        }));
+    }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton closeButton;

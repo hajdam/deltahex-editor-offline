@@ -14,36 +14,39 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along this application.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.exbin.xbup.core.parser.token;
-
-import org.exbin.xbup.core.ubnumber.type.UBNat32;
+package org.exbin.framework.gui.undo.api;
 
 /**
- * XBUP protocol level 0 zero attribute token.
+ * Empty implementation of undo handling.
  *
- * This class carry single UBNatural with zero value.
- *
- * @version 0.1.24 2014/01/05
+ * @version 0.2.1 2017/02/21
  * @author ExBin Project (http://exbin.org)
  */
-public class XBZeroAttributeToken extends XBAttributeToken {
+public class UndoActionsHandlerEmpty implements UndoActionsHandler {
 
-    private static XBZeroAttributeToken cachedZeroToken = null;
-
-    public XBZeroAttributeToken() {
-        super(new UBNat32());
+    @Override
+    public Boolean canUndo() {
+        return false;
     }
 
     @Override
-    public boolean isZero() {
-        return super.isZero();
+    public Boolean canRedo() {
+        return false;
     }
 
-    public static XBZeroAttributeToken getZeroToken() {
-        if (cachedZeroToken == null) {
-            cachedZeroToken = new XBZeroAttributeToken();
-        }
+    @Override
+    public void performUndo() {
+    }
 
-        return cachedZeroToken;
+    @Override
+    public void performRedo() {
+    }
+
+    @Override
+    public void performUndoManager() {
+    }
+
+    @Override
+    public void setUndoUpdateListener(UndoUpdateListener undoUpdateListener) {
     }
 }

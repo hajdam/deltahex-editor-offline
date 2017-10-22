@@ -16,42 +16,51 @@
  */
 package org.exbin.xbup.core.parser;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 /**
  * Exception class for XBUP protocol processing.
  *
- * @version 0.1.24 2014/11/27
+ * @version 0.2.1 2017/05/15
  * @author ExBin Project (http://exbin.org)
  */
 public class XBProcessingException extends RuntimeException {
 
+    @Nonnull
     private XBProcessingExceptionType errorType = XBProcessingExceptionType.UNKNOWN;
+    @Nullable
     private long[] treePath = null;
 
     public XBProcessingException() {
         super();
     }
 
-    public XBProcessingException(String message) {
+    public XBProcessingException(@Nullable String message) {
         super(message);
     }
 
-    public XBProcessingException(String message, XBProcessingExceptionType errorType) {
+    public XBProcessingException(@Nullable String message, @Nonnull XBProcessingExceptionType errorType) {
         this(message);
         this.errorType = errorType;
     }
 
-    public XBProcessingException(String message, long[] treePath) {
+    public XBProcessingException(@Nullable String message, @Nullable long[] treePath) {
         this(message);
         this.treePath = treePath;
     }
 
-    public XBProcessingException(String message, XBProcessingExceptionType errorType, long[] treePath) {
+    public XBProcessingException(@Nullable String message, @Nonnull XBProcessingExceptionType errorType, @Nullable long[] treePath) {
         this(message, errorType);
         this.treePath = treePath;
     }
 
     @Override
-    public boolean equals(Object obj) {
+    public boolean equals(@Nullable Object obj) {
+        if (obj == null) {
+            return false;
+        }
+
         if (obj instanceof XBProcessingException) {
             return (getMessage().equals(((XBProcessingException) obj).getMessage()) && (errorType == ((XBProcessingException) obj).getErrorType()));
         }
@@ -66,10 +75,12 @@ public class XBProcessingException extends RuntimeException {
         return hash;
     }
 
+    @Nonnull
     public XBProcessingExceptionType getErrorType() {
         return errorType;
     }
 
+    @Nullable
     public long[] getTreePath() {
         return treePath;
     }

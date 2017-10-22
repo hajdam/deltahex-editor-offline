@@ -18,6 +18,7 @@ package org.exbin.xbup.core.serial.param;
 
 import java.io.IOException;
 import java.io.InputStream;
+import javax.annotation.Nonnull;
 import org.exbin.xbup.core.block.XBBlockTerminationMode;
 import org.exbin.xbup.core.block.XBBlockType;
 import org.exbin.xbup.core.parser.XBProcessingException;
@@ -30,7 +31,7 @@ import org.exbin.xbup.core.serial.sequence.XBSerialSequenceItem;
 /**
  * XBUP level 2 child serialization provider interface.
  *
- * @version 0.1.25 2015/05/03
+ * @version 0.2.1 2017/05/10
  * @author ExBin Project (http://exbin.org)
  */
 public interface XBPProvider {
@@ -42,7 +43,8 @@ public interface XBPProvider {
      * @throws XBProcessingException if not matching
      * @throws IOException if input/output exception occurs
      */
-    public XBBlockTerminationMode pullBegin() throws XBProcessingException, IOException;
+    @Nonnull
+    XBBlockTerminationMode pullBegin() throws XBProcessingException, IOException;
 
     /**
      * Pulls block type.
@@ -51,7 +53,8 @@ public interface XBPProvider {
      * @throws XBProcessingException if not matching
      * @throws IOException if input/output exception occurs
      */
-    public XBBlockType pullType() throws XBProcessingException, IOException;
+    @Nonnull
+    XBBlockType pullType() throws XBProcessingException, IOException;
 
     /**
      * Pulls block attribute.
@@ -60,7 +63,8 @@ public interface XBPProvider {
      * @throws XBProcessingException if not matching
      * @throws IOException if input/output exception occurs
      */
-    public XBAttribute pullAttribute() throws XBProcessingException, IOException;
+    @Nonnull
+    XBAttribute pullAttribute() throws XBProcessingException, IOException;
 
     /**
      * Pulls block attribute.
@@ -69,7 +73,7 @@ public interface XBPProvider {
      * @throws XBProcessingException if not matching
      * @throws IOException if input/output exception occurs
      */
-    public byte pullByteAttribute() throws XBProcessingException, IOException;
+    byte pullByteAttribute() throws XBProcessingException, IOException;
 
     /**
      * Pulls block attribute.
@@ -78,7 +82,7 @@ public interface XBPProvider {
      * @throws XBProcessingException if not matching
      * @throws IOException if input/output exception occurs
      */
-    public short pullShortAttribute() throws XBProcessingException, IOException;
+    short pullShortAttribute() throws XBProcessingException, IOException;
 
     /**
      * Pulls block attribute.
@@ -87,7 +91,7 @@ public interface XBPProvider {
      * @throws XBProcessingException if not matching
      * @throws IOException if input/output exception occurs
      */
-    public int pullIntAttribute() throws XBProcessingException, IOException;
+    int pullIntAttribute() throws XBProcessingException, IOException;
 
     /**
      * Pulls block attribute.
@@ -96,7 +100,7 @@ public interface XBPProvider {
      * @throws XBProcessingException if not matching
      * @throws IOException if input/output exception occurs
      */
-    public long pullLongAttribute() throws XBProcessingException, IOException;
+    long pullLongAttribute() throws XBProcessingException, IOException;
 
     /**
      * Pulls block data.
@@ -105,7 +109,8 @@ public interface XBPProvider {
      * @throws XBProcessingException if not matching
      * @throws IOException if input/output exception occurs
      */
-    public InputStream pullData() throws XBProcessingException, IOException;
+    @Nonnull
+    InputStream pullData() throws XBProcessingException, IOException;
 
     /**
      * Pulls content of empty data token if present.
@@ -113,7 +118,7 @@ public interface XBPProvider {
      * @return true if empty data was present
      * @throws java.io.IOException if input/output error
      */
-    public boolean pullIfEmptyData() throws XBProcessingException, IOException;
+    boolean pullIfEmptyData() throws XBProcessingException, IOException;
 
     /**
      * Pulls empty data block if present.
@@ -121,7 +126,7 @@ public interface XBPProvider {
      * @return true if empty data was present
      * @throws java.io.IOException if input/output error
      */
-    public boolean pullIfEmptyBlock() throws XBProcessingException, IOException;
+    boolean pullIfEmptyBlock() throws XBProcessingException, IOException;
 
     /**
      * Pulls end of block.
@@ -129,7 +134,7 @@ public interface XBPProvider {
      * @throws XBProcessingException if not matching
      * @throws IOException if input/output exception occurs
      */
-    public void pullEnd() throws XBProcessingException, IOException;
+    void pullEnd() throws XBProcessingException, IOException;
 
     /**
      * Pulls single token.
@@ -139,7 +144,8 @@ public interface XBPProvider {
      * @throws IOException if input/output exception occurs
      * @return token
      */
-    public XBTToken pullToken(XBTTokenType tokenType) throws XBProcessingException, IOException;
+    @Nonnull
+    XBTToken pullToken(@Nonnull XBTTokenType tokenType) throws XBProcessingException, IOException;
 
     /**
      * Pulls single token for preserving minimal form.
@@ -148,7 +154,8 @@ public interface XBPProvider {
      * @throws IOException if input/output exception occurs
      * @return token
      */
-    public XBTToken pullToken() throws XBProcessingException, IOException;
+    @Nonnull
+    XBTToken pullToken() throws XBProcessingException, IOException;
 
     /**
      * Pulls serializable object using consist method.
@@ -157,7 +164,7 @@ public interface XBPProvider {
      * @throws XBProcessingException if not matching
      * @throws IOException if input/output exception occurs
      */
-    public void pullConsist(XBSerializable child) throws XBProcessingException, IOException;
+    void pullConsist(@Nonnull XBSerializable child) throws XBProcessingException, IOException;
 
     /**
      * Pulls serializable object using join method.
@@ -166,7 +173,7 @@ public interface XBPProvider {
      * @throws XBProcessingException if not matching
      * @throws IOException if input/output exception occurs
      */
-    public void pullJoin(XBSerializable serial) throws XBProcessingException, IOException;
+    void pullJoin(@Nonnull XBSerializable serial) throws XBProcessingException, IOException;
 
     /**
      * Pulls serializable object using list consist method.
@@ -175,7 +182,7 @@ public interface XBPProvider {
      * @throws XBProcessingException if not matching
      * @throws IOException if input/output exception occurs
      */
-    public void pullListConsist(XBSerializable child) throws XBProcessingException, IOException;
+    void pullListConsist(@Nonnull XBSerializable child) throws XBProcessingException, IOException;
 
     /**
      * Pulls serializable object using list join method.
@@ -184,7 +191,7 @@ public interface XBPProvider {
      * @throws XBProcessingException if not matching
      * @throws IOException if input/output exception occurs
      */
-    public void pullListJoin(XBSerializable serial) throws XBProcessingException, IOException;
+    void pullListJoin(@Nonnull XBSerializable serial) throws XBProcessingException, IOException;
 
     /**
      * Pulls given sequence item.
@@ -193,7 +200,7 @@ public interface XBPProvider {
      * @throws XBProcessingException if not matching
      * @throws java.io.IOException if input/output error
      */
-    public void pullItem(XBSerialSequenceItem item) throws XBProcessingException, IOException;
+    void pullItem(@Nonnull XBSerialSequenceItem item) throws XBProcessingException, IOException;
 
     /**
      * Pulls serializable object appending all tokens.
@@ -202,5 +209,5 @@ public interface XBPProvider {
      * @throws XBProcessingException if not matching
      * @throws IOException if input/output exception occurs
      */
-    public void pullAppend(XBSerializable serial) throws XBProcessingException, IOException;
+    void pullAppend(@Nonnull XBSerializable serial) throws XBProcessingException, IOException;
 }

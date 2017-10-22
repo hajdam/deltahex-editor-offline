@@ -40,7 +40,7 @@ import org.exbin.xbup.core.ubnumber.type.UBNat32;
 /**
  * Basic XBUP level 0 event reader - producer.
  *
- * @version 0.1.25 2015/07/23
+ * @version 0.2.1 2017/05/19
  * @author ExBin Project (http://exbin.org)
  */
 public class XBEventReader implements XBEventProducer {
@@ -119,11 +119,11 @@ public class XBEventReader implements XBEventProducer {
                 if (sizeLimits.isEmpty()) {
                     // Process tail data
                     if (parserMode != XBParserMode.SINGLE_BLOCK && parserMode != XBParserMode.SKIP_TAIL && source.available() > 0) {
-                        listener.putXBToken(new XBDataToken(new TailDataInputStreamWrapper(source)));
+                        listener.putXBToken(XBDataToken.create(new TailDataInputStreamWrapper(source)));
                     }
                 }
 
-                listener.putXBToken(new XBEndToken());
+                listener.putXBToken(XBEndToken.create());
             } else {
                 // Process regular block
                 int attributePartSizeValue = attributePartSize.getInt();
@@ -133,25 +133,25 @@ public class XBEventReader implements XBEventProducer {
                 int dataPartSizeLength = dataPartSize.fromStreamUB(source);
                 Integer dataPartSizeValue = dataPartSize.isInfinity() ? null : dataPartSize.getInt();
 
-                listener.putXBToken(new XBBeginToken(dataPartSizeValue == null ? XBBlockTerminationMode.TERMINATED_BY_ZERO : XBBlockTerminationMode.SIZE_SPECIFIED));
+                listener.putXBToken(XBBeginToken.create(dataPartSizeValue == null ? XBBlockTerminationMode.TERMINATED_BY_ZERO : XBBlockTerminationMode.SIZE_SPECIFIED));
 
                 if (attributePartSizeValue == dataPartSizeLength) {
                     // Process data block
                     FinishableStream dataWrapper = (dataPartSizeValue == null)
                             ? new TerminatedDataInputStreamWrapper(source)
                             : new FixedDataInputStreamWrapper(source, dataPartSizeValue);
-                    listener.putXBToken(new XBDataToken((InputStream) dataWrapper));
+                    listener.putXBToken(XBDataToken.create((InputStream) dataWrapper));
                     dataWrapper.finish();
                     shrinkStatus(sizeLimits, (int) dataWrapper.getLength());
 
                     if (sizeLimits.isEmpty()) {
                         // Process tail data
                         if (parserMode != XBParserMode.SINGLE_BLOCK && parserMode != XBParserMode.SKIP_TAIL && source.available() > 0) {
-                            listener.putXBToken(new XBDataToken(new TailDataInputStreamWrapper(source)));
+                            listener.putXBToken(XBDataToken.create(new TailDataInputStreamWrapper(source)));
                         }
                     }
 
-                    listener.putXBToken(new XBEndToken());
+                    listener.putXBToken(XBEndToken.create());
                 } else {
                     // Process standard block
                     sizeLimits.add(dataPartSizeValue);
@@ -166,7 +166,7 @@ public class XBEventReader implements XBEventProducer {
                         }
 
                         attributePartSizeValue -= attributeLength;
-                        listener.putXBToken(new XBAttributeToken(attribute));
+                        listener.putXBToken(XBAttributeToken.create(attribute));
                     }
                 }
             }
@@ -179,11 +179,11 @@ public class XBEventReader implements XBEventProducer {
                     // Process tail data
                     if (parserMode != XBParserMode.SINGLE_BLOCK && parserMode != XBParserMode.SKIP_TAIL && source.available() > 0) {
                         TailDataInputStreamWrapper dataWrapper = new TailDataInputStreamWrapper(source);
-                        listener.putXBToken(new XBDataToken(dataWrapper));
+                        listener.putXBToken(XBDataToken.create(dataWrapper));
                     }
                 }
 
-                listener.putXBToken(new XBEndToken());
+                listener.putXBToken(XBEndToken.create());
             }
         } while (!sizeLimits.isEmpty());
     }

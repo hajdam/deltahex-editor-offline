@@ -29,11 +29,9 @@ import org.exbin.xbup.core.parser.param.XBParamProcessingState;
 import org.exbin.xbup.core.parser.token.XBTAttributeToken;
 import org.exbin.xbup.core.parser.token.XBTBeginToken;
 import org.exbin.xbup.core.parser.token.XBTDataToken;
-import org.exbin.xbup.core.parser.token.XBTEmptyDataToken;
 import org.exbin.xbup.core.parser.token.XBTEndToken;
 import org.exbin.xbup.core.parser.token.XBTToken;
 import org.exbin.xbup.core.parser.token.XBTTokenType;
-import org.exbin.xbup.core.parser.token.XBTZeroAttributeToken;
 import org.exbin.xbup.core.parser.token.event.XBTEventProducer;
 import org.exbin.xbup.core.parser.token.event.convert.XBTEventProducerToProducer;
 import org.exbin.xbup.core.parser.token.pull.XBTPullConsumer;
@@ -98,7 +96,7 @@ public class XBPSequencePullConsumer implements XBTPullConsumer {
                 processingState = XBParamProcessingState.BEGIN;
                 if (token.getTokenType() == XBTTokenType.END) {
                     emptyNodeMode = true;
-                    return new XBTBeginToken(XBBlockTerminationMode.SIZE_SPECIFIED);
+                    return XBTBeginToken.create(XBBlockTerminationMode.SIZE_SPECIFIED);
                 } else if (token.getTokenType() != XBTTokenType.BEGIN) {
                     throw new XBProcessingException("Unexpected token type " + token.getTokenType(), XBProcessingExceptionType.UNEXPECTED_ORDER);
                 }
@@ -127,7 +125,7 @@ public class XBPSequencePullConsumer implements XBTPullConsumer {
                     if (!attributeSequence.isEmpty()) {
                         return attributeSequence.remove(0);
                     } else {
-                        return new XBTZeroAttributeToken();
+                        return XBTAttributeToken.createZeroToken();
                     }
                 }
 
@@ -145,7 +143,7 @@ public class XBPSequencePullConsumer implements XBTPullConsumer {
 
                 processingState = XBParamProcessingState.DATA;
                 if (emptyNodeMode) {
-                    return new XBTEmptyDataToken();
+                    return XBTDataToken.createEmptyToken();
                 }
 
                 XBTToken token = pullProvider.pullXBTToken();
@@ -166,7 +164,7 @@ public class XBPSequencePullConsumer implements XBTPullConsumer {
                     attributeSequence = attributeSequences.remove(attributeSequences.size() - 1);
                 }
 
-                return new XBTEndToken();
+                return XBTEndToken.create();
             }
         }
 

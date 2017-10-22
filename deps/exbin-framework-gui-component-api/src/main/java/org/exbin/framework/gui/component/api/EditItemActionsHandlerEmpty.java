@@ -14,34 +14,40 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along this application.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.exbin.xbup.core.parser.token;
-
-import java.io.ByteArrayInputStream;
+package org.exbin.framework.gui.component.api;
 
 /**
- * XBUP protocol level 1 empty data token.
+ * Empty implementation for clipboard handler for visual component / context
+ * menu.
  *
- * @version 0.1.24 2015/01/05
+ * @version 0.2.1 2017/02/21
  * @author ExBin Project (http://exbin.org)
  */
-public class XBTEmptyDataToken extends XBTDataToken {
+public class EditItemActionsHandlerEmpty implements EditItemActionsHandler {
 
-    private static XBTEmptyDataToken cachedEmptyToken = null;
-
-    public XBTEmptyDataToken() {
-        super(new ByteArrayInputStream(new byte[0]));
+    @Override
+    public void performAddItem() {
     }
 
     @Override
-    public boolean isEmpty() {
-        return true;
+    public void performEditItem() {
     }
 
-    public static XBTEmptyDataToken getEmptyToken() {
-        if (cachedEmptyToken == null) {
-            cachedEmptyToken = new XBTEmptyDataToken();
-        }
+    @Override
+    public void performDeleteItem() {
+    }
 
-        return cachedEmptyToken;
+    @Override
+    public boolean isSelection() {
+        return false;
+    }
+
+    @Override
+    public boolean isEditable() {
+        return false;
+    }
+
+    @Override
+    public void setUpdateListener(EditItemActionsUpdateListener updateListener) {
     }
 }

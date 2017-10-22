@@ -24,14 +24,18 @@ import org.exbin.deltahex.EditationMode;
 import org.exbin.framework.deltahex.HexStatusApi;
 import org.exbin.framework.editor.text.TextEncodingStatusApi;
 import org.exbin.framework.gui.utils.LanguageUtils;
+import org.exbin.framework.gui.utils.WindowUtils;
 
 /**
  * Hexadecimal editor status panel.
  *
- * @version 0.2.0 2017/01/05
+ * @version 0.2.0 2017/09/30
  * @author ExBin Project (http://exbin.org)
  */
 public class HexStatusPanel extends javax.swing.JPanel implements HexStatusApi, TextEncodingStatusApi {
+
+    public static final String INSERT_EDITATION_MODE_LABEL = "INS";
+    public static final String OVERWRITE_EDITATION_MODE_LABEL = "OVR";
 
     private EditationMode editationMode;
     private StatusControlHandler statusControlHandle;
@@ -270,6 +274,16 @@ public class HexStatusPanel extends javax.swing.JPanel implements HexStatusApi, 
         }
     }
 
+    /**
+     * Test method for this panel.
+     *
+     * @param args the command line arguments
+     */
+    public static void main(String args[]) {
+        WindowUtils.invokeDialog(new HexStatusPanel());
+    }
+
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JRadioButtonMenuItem deltaMemoryModeRadioButtonMenuItem;
     private javax.swing.JMenuItem documentSizeCopyMenuItem;
@@ -312,7 +326,7 @@ public class HexStatusPanel extends javax.swing.JPanel implements HexStatusApi, 
 
     @Override
     public void setEncoding(String encodingName) {
-        encodingLabel.setText(encodingName);
+        encodingLabel.setText(encodingName + " ^");
     }
 
     @Override
@@ -320,11 +334,11 @@ public class HexStatusPanel extends javax.swing.JPanel implements HexStatusApi, 
         this.editationMode = editationMode;
         switch (editationMode) {
             case INSERT: {
-                editationModeLabel.setText("INS");
+                editationModeLabel.setText(INSERT_EDITATION_MODE_LABEL);
                 break;
             }
             case OVERWRITE: {
-                editationModeLabel.setText("OVR");
+                editationModeLabel.setText(OVERWRITE_EDITATION_MODE_LABEL);
                 break;
             }
             default:

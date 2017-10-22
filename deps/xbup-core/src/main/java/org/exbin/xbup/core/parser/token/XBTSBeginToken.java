@@ -16,6 +16,8 @@
  */
 package org.exbin.xbup.core.parser.token;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import org.exbin.xbup.core.block.XBBlockTerminationMode;
 import org.exbin.xbup.core.ubnumber.UBNatural;
 
@@ -27,23 +29,47 @@ import org.exbin.xbup.core.ubnumber.UBNatural;
  *
  * Additional blockSize represents precomputed size of block if available.
  *
- * @version 0.1.23 2014/02/01
+ * @version 0.2.1 2017/05/22
  * @author ExBin Project (http://exbin.org)
  */
 public class XBTSBeginToken extends XBTBeginToken {
 
+    @Nullable
     private UBNatural blockSize;
+    @Nonnull
+    private XBBlockTerminationMode terminationMode;
 
-    public XBTSBeginToken(XBBlockTerminationMode terminationMode, UBNatural blockSize) {
-        super(terminationMode);
+    private XBTSBeginToken(@Nonnull XBBlockTerminationMode terminationMode, @Nullable UBNatural blockSize) {
+        this.terminationMode = terminationMode;
         this.blockSize = blockSize;
     }
 
+    @Override
+    public XBTTokenType getTokenType() {
+        return XBTTokenType.BEGIN;
+    }
+
+    @Nonnull
+    @Override
+    public XBBlockTerminationMode getTerminationMode() {
+        return terminationMode;
+    }
+
+    public void setTerminationMode(@Nonnull XBBlockTerminationMode terminationMode) {
+        this.terminationMode = terminationMode;
+    }
+
+    @Nullable
     public UBNatural getBlockSize() {
         return blockSize;
     }
 
-    public void setBlockSize(UBNatural blockSize) {
+    public void setBlockSize(@Nullable UBNatural blockSize) {
         this.blockSize = blockSize;
+    }
+
+    @Nonnull
+    public static XBTSBeginToken create(@Nonnull XBBlockTerminationMode terminationMode, @Nullable UBNatural blockSize) {
+        return new XBTSBeginToken(terminationMode, blockSize);
     }
 }

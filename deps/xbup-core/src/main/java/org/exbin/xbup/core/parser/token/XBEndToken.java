@@ -16,19 +16,41 @@
  */
 package org.exbin.xbup.core.parser.token;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 /**
  * XBUP protocol level 0 end token.
  *
- * @version 0.1.23 2013/11/01
+ * @version 0.2.1 2017/05/22
  * @author ExBin Project (http://exbin.org)
  */
-public class XBEndToken extends XBToken {
+public abstract class XBEndToken implements XBToken {
 
-    public XBEndToken() {
+    private XBEndToken() {
     }
 
     @Override
+    @Nonnull
     public XBTokenType getTokenType() {
         return XBTokenType.END;
+    }
+
+    @Nullable
+    private static XBEndToken instance = null;
+
+    @Nonnull
+    public static XBEndToken create() {
+        if (instance == null) {
+            instance = new XBEndTokenImpl();
+        }
+
+        return instance;
+    }
+
+    private static class XBEndTokenImpl extends XBEndToken {
+
+        public XBEndTokenImpl() {
+        }
     }
 }

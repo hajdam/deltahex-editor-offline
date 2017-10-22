@@ -47,7 +47,7 @@ import org.exbin.xbup.core.ubnumber.type.UBNat32;
 /**
  * Record about single module.
  *
- * @version 0.2.0 2016/03/28
+ * @version 0.2.1 2017/05/19
  * @author ExBin Project (http://exbin.org)
  */
 public class XBModuleInfo implements XBPSequenceSerializable, XBModuleRecord {
@@ -190,28 +190,28 @@ public class XBModuleInfo implements XBPSequenceSerializable, XBModuleRecord {
         public void putXBTToken(XBTToken token) throws XBProcessingException, IOException {
             switch (token.getTokenType()) {
                 case BEGIN: {
-                    eventListener.putXBToken(new XBBeginToken(((XBTBeginToken) token).getTerminationMode()));
+                    eventListener.putXBToken(XBBeginToken.create(((XBTBeginToken) token).getTerminationMode()));
                     blockIdSent = false;
                     break;
                 }
                 case TYPE: {
-                    eventListener.putXBToken(new XBAttributeToken(new UBNat32()));
+                    eventListener.putXBToken(XBAttributeToken.create(new UBNat32()));
                     break;
                 }
                 case ATTRIBUTE: {
                     if (!blockIdSent) {
-                        eventListener.putXBToken(new XBAttributeToken(new UBNat32()));
+                        eventListener.putXBToken(XBAttributeToken.create(new UBNat32()));
                         blockIdSent = true;
                     }
-                    eventListener.putXBToken(new XBAttributeToken(((XBTAttributeToken) token).getAttribute()));
+                    eventListener.putXBToken(XBAttributeToken.create(((XBTAttributeToken) token).getAttribute()));
                     break;
                 }
                 case DATA: {
-                    eventListener.putXBToken(new XBDataToken(((XBTDataToken) token).getData()));
+                    eventListener.putXBToken(XBDataToken.create(((XBTDataToken) token).getData()));
                     break;
                 }
                 case END: {
-                    eventListener.putXBToken(new XBEndToken());
+                    eventListener.putXBToken(XBEndToken.create());
                     break;
                 }
             }

@@ -17,6 +17,8 @@
 package org.exbin.xbup.core.parser.token.pull.convert;
 
 import java.io.IOException;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import org.exbin.xbup.core.block.XBFixedBlockType;
 import org.exbin.xbup.core.parser.XBProcessingException;
 import org.exbin.xbup.core.parser.token.XBAttributeToken;
@@ -36,54 +38,57 @@ import org.exbin.xbup.core.parser.token.pull.XBTPullProvider;
 /**
  * XBUP level 0 to level 1 event convertor which introduces unknown type.
  *
- * @version 0.1.24 2014/11/27
+ * @version 0.2.1 2017/06/05
  * @author ExBin Project (http://exbin.org)
  */
 public class XBTToXBPullWrapper implements XBTPullProvider, XBPullConsumer {
 
+    @Nonnull
     private XBPullProvider pullProvider;
     private final XBFixedBlockType unknownBlockType = new XBFixedBlockType();
     private boolean typeSent = false;
-    private XBToken attrToken = null;
+    @Nullable
+    private XBToken attributeToken = null;
 
-    public XBTToXBPullWrapper(XBPullProvider pullProvider) {
+    public XBTToXBPullWrapper(@Nonnull XBPullProvider pullProvider) {
         this.pullProvider = pullProvider;
     }
 
     @Override
-    public void attachXBPullProvider(XBPullProvider pullProvider) {
+    public void attachXBPullProvider(@Nonnull XBPullProvider pullProvider) {
         this.pullProvider = pullProvider;
     }
 
     @Override
+    @Nonnull
     public XBTToken pullXBTToken() throws XBProcessingException, IOException {
         XBToken token;
-        if (attrToken != null) {
-            token = attrToken;
-            attrToken = null;
-            return new XBTAttributeToken(((XBAttributeToken) token).getAttribute());
+        if (attributeToken != null) {
+            token = attributeToken;
+            attributeToken = null;
+            return XBTAttributeToken.create(((XBAttributeToken) token).getAttribute());
         }
 
         token = pullProvider.pullXBToken();
         switch (token.getTokenType()) {
             case BEGIN: {
                 typeSent = false;
-                return new XBTBeginToken(((XBBeginToken) token).getTerminationMode());
+                return XBTBeginToken.create(((XBBeginToken) token).getTerminationMode());
             }
             case ATTRIBUTE: {
                 if (!typeSent) {
-                    attrToken = token;
+                    attributeToken = token;
                     typeSent = true;
-                    return new XBTTypeToken(unknownBlockType);
+                    return XBTTypeToken.create(unknownBlockType);
                 }
 
-                return new XBTAttributeToken(((XBAttributeToken) token).getAttribute());
+                return XBTAttributeToken.create(((XBAttributeToken) token).getAttribute());
             }
             case DATA: {
-                return new XBTDataToken(((XBDataToken) token).getData());
+                return XBTDataToken.create(((XBDataToken) token).getData());
             }
             case END: {
-                return new XBTEndToken();
+                return XBTEndToken.create();
             }
             default: {
                 throw new IllegalStateException();

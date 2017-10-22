@@ -42,7 +42,6 @@ import org.exbin.xbup.core.parser.token.XBTBeginToken;
 import org.exbin.xbup.core.parser.token.XBTEndToken;
 import org.exbin.xbup.core.parser.token.XBTToken;
 import org.exbin.xbup.core.parser.token.XBTTypeToken;
-import org.exbin.xbup.core.parser.token.XBTZeroAttributeToken;
 import org.exbin.xbup.core.parser.token.convert.XBTListenerToToken;
 import org.exbin.xbup.core.parser.token.event.XBTEventListener;
 import org.exbin.xbup.core.parser.token.pull.XBTPullProvider;
@@ -54,7 +53,7 @@ import org.exbin.xbup.core.ubnumber.type.UBNat32;
 /**
  * Extracting specified parameters from XBUP level 2 blocks.
  *
- * @version 0.1.24 2015/01/18
+ * @version 0.2.1 2017/05/22
  * @author ExBin Project (http://exbin.org)
  */
 public class XBATreeParamExtractor implements XBTPullProvider, XBTEventListener {
@@ -122,7 +121,7 @@ public class XBATreeParamExtractor implements XBTPullProvider, XBTEventListener 
                         if (currentParameterInfo == null) {
                             currentParameterInfo = processParameterInfo();
                             currentProcessingState = XBParamProcessingState.TYPE;
-                            return new XBTBeginToken(XBBlockTerminationMode.SIZE_SPECIFIED);
+                            return XBTBeginToken.create(XBBlockTerminationMode.SIZE_SPECIFIED);
                         } else {
                             throw new XBProcessingException("Parameter already processed", XBProcessingExceptionType.READING_AFTER_END);
                         }
@@ -131,7 +130,7 @@ public class XBATreeParamExtractor implements XBTPullProvider, XBTEventListener 
                     case TYPE: {
                         currentProcessingState = currentParameterInfo.isEmpty() ? XBParamProcessingState.END
                                 : (currentParameterInfo.attributeCount > 0 ? XBParamProcessingState.ATTRIBUTES : XBParamProcessingState.CHILDREN);
-                        return new XBTTypeToken(new XBDeclBlockType(currentParameterInfo.blockDecl));
+                        return XBTTypeToken.create(new XBDeclBlockType(currentParameterInfo.blockDecl));
                     }
 
                     case ATTRIBUTES: {
@@ -161,7 +160,7 @@ public class XBATreeParamExtractor implements XBTPullProvider, XBTEventListener 
 
                     case END: {
                         currentProcessingState = XBParamProcessingState.BEGIN;
-                        return new XBTEndToken();
+                        return XBTEndToken.create();
                     }
                 }
 
@@ -184,7 +183,7 @@ public class XBATreeParamExtractor implements XBTPullProvider, XBTEventListener 
                         if (currentParameterInfo == null) {
                             currentParameterInfo = processParameterInfo();
                             currentListProcessingState = XBParamListProcessingState.TYPE;
-                            return new XBTBeginToken(XBBlockTerminationMode.SIZE_SPECIFIED);
+                            return XBTBeginToken.create(XBBlockTerminationMode.SIZE_SPECIFIED);
                         } else {
                             throw new XBProcessingException("Parameter already processed", XBProcessingExceptionType.READING_AFTER_END);
                         }
@@ -193,7 +192,7 @@ public class XBATreeParamExtractor implements XBTPullProvider, XBTEventListener 
                     case TYPE: {
                         currentListProcessingState = XBParamListProcessingState.LIST_SIZE;
                         // TODO some sort of customized type later
-                        return new XBTTypeToken(new XBFixedBlockType(XBBasicBlockType.UNKNOWN_BLOCK));
+                        return XBTTypeToken.create(new XBFixedBlockType(XBBasicBlockType.UNKNOWN_BLOCK));
                     }
 
                     case LIST_SIZE: {
@@ -206,7 +205,7 @@ public class XBATreeParamExtractor implements XBTPullProvider, XBTEventListener 
                         } else {
                             currentParameterInfo.attributeCount--;
                         }
-                        return new XBTAttributeToken(listSize);
+                        return XBTAttributeToken.create(listSize);
                     }
 
                     case ITEMS: {
@@ -215,13 +214,13 @@ public class XBATreeParamExtractor implements XBTPullProvider, XBTEventListener 
                                 case BEGIN: {
                                     currentParameterInfo = processParameterInfo();
                                     currentProcessingState = XBParamProcessingState.TYPE;
-                                    return new XBTBeginToken(XBBlockTerminationMode.SIZE_SPECIFIED);
+                                    return XBTBeginToken.create(XBBlockTerminationMode.SIZE_SPECIFIED);
                                 }
 
                                 case TYPE: {
                                     currentProcessingState = currentParameterInfo.isEmpty() ? XBParamProcessingState.END
                                             : (currentParameterInfo.attributeCount > 0 ? XBParamProcessingState.ATTRIBUTES : XBParamProcessingState.CHILDREN);
-                                    return new XBTTypeToken(new XBDeclBlockType(currentParameterInfo.blockDecl));
+                                    return XBTTypeToken.create(new XBDeclBlockType(currentParameterInfo.blockDecl));
                                 }
 
                                 case ATTRIBUTES: {
@@ -255,7 +254,7 @@ public class XBATreeParamExtractor implements XBTPullProvider, XBTEventListener 
                                     if (currentParameterInfo.listSize == 0) {
                                         currentListProcessingState = XBParamListProcessingState.END;
                                     }
-                                    return new XBTEndToken();
+                                    return XBTEndToken.create();
                                 }
                             }
                         }
@@ -263,7 +262,7 @@ public class XBATreeParamExtractor implements XBTPullProvider, XBTEventListener 
                     }
                     case END: {
                         currentListProcessingState = XBParamListProcessingState.BEGIN;
-                        return new XBTEndToken();
+                        return XBTEndToken.create();
                     }
                 }
 
@@ -276,7 +275,7 @@ public class XBATreeParamExtractor implements XBTPullProvider, XBTEventListener 
                         if (currentParameterInfo == null) {
                             currentParameterInfo = processParameterInfo();
                             currentListProcessingState = XBParamListProcessingState.TYPE;
-                            return new XBTBeginToken(XBBlockTerminationMode.SIZE_SPECIFIED);
+                            return XBTBeginToken.create(XBBlockTerminationMode.SIZE_SPECIFIED);
                         } else {
                             throw new XBProcessingException("Parameter already processed", XBProcessingExceptionType.READING_AFTER_END);
                         }
@@ -284,7 +283,7 @@ public class XBATreeParamExtractor implements XBTPullProvider, XBTEventListener 
 
                     case TYPE: {
                         currentListProcessingState = XBParamListProcessingState.LIST_SIZE;
-                        return new XBTTypeToken(new XBFixedBlockType(XBBasicBlockType.UNKNOWN_BLOCK));
+                        return XBTTypeToken.create(new XBFixedBlockType(XBBasicBlockType.UNKNOWN_BLOCK));
                     }
 
                     case LIST_SIZE: {
@@ -302,7 +301,7 @@ public class XBATreeParamExtractor implements XBTPullProvider, XBTEventListener 
                         } else {
                             currentParameterInfo.attributeCount--;
                         }
-                        return new XBTAttributeToken(listSize.convertToNatural());
+                        return XBTAttributeToken.create(listSize.convertToNatural());
                     }
 
                     case ITEMS: {
@@ -321,7 +320,7 @@ public class XBATreeParamExtractor implements XBTPullProvider, XBTEventListener 
                     }
                     case END: {
                         currentListProcessingState = XBParamListProcessingState.BEGIN;
-                        return new XBTEndToken();
+                        return XBTEndToken.create();
                     }
                 }
 
@@ -487,13 +486,13 @@ public class XBATreeParamExtractor implements XBTPullProvider, XBTEventListener 
         return parameterInfo;
     }
 
-    private XBTAttributeToken getNextAttributeToken() {
+    private XBTToken getNextAttributeToken() {
         if (position.attributeCount >= source.getAttributesCount()) {
             position.attributeCount++;
-            return new XBTZeroAttributeToken();
+            return XBTAttributeToken.createZeroToken();
         }
 
-        XBTAttributeToken attributeToken = new XBTAttributeToken(source.getAttributeAt(position.attributeCount));
+        XBTAttributeToken attributeToken = XBTAttributeToken.create(source.getAttributeAt(position.attributeCount));
         position.attributeCount++;
         return attributeToken;
     }

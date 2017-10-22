@@ -17,6 +17,7 @@
 package org.exbin.xbup.core.parser.token.event.convert;
 
 import java.io.IOException;
+import javax.annotation.Nonnull;
 import org.exbin.xbup.core.parser.XBProcessingException;
 import org.exbin.xbup.core.parser.token.XBAttributeToken;
 import org.exbin.xbup.core.parser.token.XBBeginToken;
@@ -30,61 +31,64 @@ import org.exbin.xbup.core.parser.token.XBTTokenType;
 import org.exbin.xbup.core.parser.token.event.XBEventListener;
 import org.exbin.xbup.core.parser.token.event.XBEventProducer;
 import org.exbin.xbup.core.parser.token.event.XBTEventListener;
-import org.exbin.xbup.core.ubnumber.type.UBNat32;
 
 /**
  * XBUP level 1 to level 0 event convertor which drops node types.
  *
- * @version 0.1.23 2013/11/22
+ * @version 0.2.1 2017/06/05
  * @author ExBin Project (http://exbin.org)
  */
 public class XBTToXBEventDropper implements XBTEventListener, XBEventProducer {
 
+    @Nonnull
     private XBEventListener target;
-    boolean attr;
+    private boolean typeProcessed;
 
-    public XBTToXBEventDropper(XBEventListener target) {
+    public XBTToXBEventDropper(@Nonnull XBEventListener target) {
         this.target = target;
     }
 
     @Override
-    public void attachXBEventListener(XBEventListener eventListener) {
+    public void attachXBEventListener(@Nonnull XBEventListener eventListener) {
         target = eventListener;
-        attr = false;
+        typeProcessed = false;
     }
 
     @Override
-    public void putXBTToken(XBTToken token) throws XBProcessingException, IOException {
-        if (attr && (token.getTokenType() != XBTTokenType.ATTRIBUTE)) {
-            target.putXBToken(new XBAttributeToken(new UBNat32(0)));
-            attr = false;
+    public void putXBTToken(@Nonnull XBTToken token) throws XBProcessingException, IOException {
+        if (typeProcessed && (token.getTokenType() != XBTTokenType.ATTRIBUTE)) {
+            target.putXBToken(XBAttributeToken.createZeroToken());
+            typeProcessed = false;
         }
 
         switch (token.getTokenType()) {
             case BEGIN: {
-                target.putXBToken(new XBBeginToken(((XBTBeginToken) token).getTerminationMode()));
+                target.putXBToken(XBBeginToken.create(((XBTBeginToken) token).getTerminationMode()));
                 break;
             }
 
             case TYPE: {
-                attr = true;
+                typeProcessed = true;
                 break;
             }
 
             case ATTRIBUTE: {
-                target.putXBToken(new XBAttributeToken(((XBTAttributeToken) token).getAttribute()));
+                target.putXBToken(XBAttributeToken.create(((XBTAttributeToken) token).getAttribute()));
                 break;
             }
 
             case DATA: {
-                target.putXBToken(new XBDataToken(((XBTDataToken) token).getData()));
+                target.putXBToken(XBDataToken.create(((XBTDataToken) token).getData()));
                 break;
             }
 
             case END: {
-                target.putXBToken(new XBEndToken());
+                target.putXBToken(XBEndToken.create());
                 break;
             }
+
+            default:
+                throw new IllegalStateException("Unexpected token type " + token.getTokenType().toString());
         }
     }
 }
