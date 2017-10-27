@@ -1,6 +1,8 @@
 #!/usr/bin/make -f
 
 ROOT = $(CURDIR)/debian/deltahex-editor
+# Set temporary HOME for launchpad build
+export HOME=$(CURDIR)/tmphome
 
 override_dh_auto_clean:
 	$(RM) deltahex-editor
